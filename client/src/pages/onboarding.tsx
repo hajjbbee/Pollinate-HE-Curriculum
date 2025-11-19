@@ -27,8 +27,8 @@ const step1Schema = z.object({
 
 const step2Schema = z.object({
   address: z.string().min(5, "Please enter a valid address"),
-  lat: z.number({ required_error: "Please select an address from the dropdown" }),
-  lng: z.number({ required_error: "Please select an address from the dropdown" }),
+  lat: z.number().optional(),
+  lng: z.number().optional(),
   travelRadiusMinutes: z.number().min(15).max(120),
   flexForHighInterest: z.boolean(),
 });
@@ -143,12 +143,7 @@ export default function Onboarding() {
   };
 
   const onStep2Submit = (data: Step2Data) => {
-    if (!data.lat || !data.lng) {
-      step2Form.setError("address", {
-        message: "Please select an address from the dropdown suggestions to ensure we can find local opportunities near you.",
-      });
-      return;
-    }
+    // Allow proceeding without coordinates - backend will geocode manually entered addresses
     setStep2Data(data);
     setStep(3);
   };
