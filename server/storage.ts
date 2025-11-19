@@ -53,7 +53,10 @@ export interface IStorage {
   // Subscriptions
   upsertSubscription(subscription: InsertSubscription): Promise<Subscription>;
   getSubscription(familyId: string): Promise<Subscription | null>;
+  getSubscriptionByStripeId(stripeSubscriptionId: string): Promise<Subscription | null>;
+  getSubscriptionByCustomerId(stripeCustomerId: string): Promise<Subscription | null>;
   updateSubscription(familyId: string, updates: Partial<InsertSubscription>): Promise<Subscription>;
+  updateSubscriptionByStripeId(stripeSubscriptionId: string, updates: Partial<InsertSubscription>): Promise<Subscription | null>;
 }
 
 import { db } from "./db";
@@ -254,6 +257,22 @@ export class DatabaseStorage implements IStorage {
     return result || null;
   }
 
+  async getSubscriptionByStripeId(stripeSubscriptionId: string): Promise<Subscription | null> {
+    const [result] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.stripeSubscriptionId, stripeSubscriptionId));
+    return result || null;
+  }
+
+  async getSubscriptionByCustomerId(stripeCustomerId: string): Promise<Subscription | null> {
+    const [result] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.stripeCustomerId, stripeCustomerId));
+    return result || null;
+  }
+
   async updateSubscription(familyId: string, updates: Partial<InsertSubscription>): Promise<Subscription> {
     const [result] = await db
       .update(subscriptions)
@@ -261,6 +280,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(subscriptions.familyId, familyId))
       .returning();
     return result;
+  }
+
+  async updateSubscriptionByStripeId(stripeSubscriptionId: string, updates: Partial<InsertSubscription>): Promise<Subscription | null> {
+    const [result] = await db
+      .update(subscriptions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(subscriptions.stripeSubscriptionId, stripeSubscriptionId))
+      .returning();
+    return result || null;
   }
 }
 

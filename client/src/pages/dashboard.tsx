@@ -173,6 +173,14 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="flex items-center gap-4">
+              {subscription?.status === "active" && (
+                <Link href="/pricing">
+                  <Badge variant={subscription.plan === "pro" ? "default" : "secondary"} className="gap-1" data-testid="badge-subscription">
+                    <Zap className="w-3 h-3" />
+                    {subscription.plan === "pro" ? "Pro" : "Basic"}
+                  </Badge>
+                </Link>
+              )}
               {subscription?.plan === "basic" && subscription?.status === "active" && (
                 <Link href="/pricing">
                   <Button variant="outline" size="sm" className="gap-2" data-testid="button-upgrade">

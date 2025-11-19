@@ -693,12 +693,14 @@ router.get("/api/billing/subscription", isAuthenticated, async (req: Request, re
 
     const family = await storage.getFamily(req.user.id);
     if (!family) {
-      return res.status(404).json({ error: "Family not found" });
+      // Return neutral payload for users who haven't onboarded yet
+      return res.json({ status: "inactive", plan: "none" });
     }
 
     const subscription = await storage.getSubscription(family.id);
     if (!subscription) {
-      return res.json({ status: "inactive", plan: "basic" });
+      // Return neutral payload for families without subscriptions
+      return res.json({ status: "inactive", plan: "none" });
     }
 
     res.json(subscription);
@@ -717,8 +719,14 @@ router.post("/api/billing/webhook", async (req: Request, res: Response) => {
   }
 
   try {
+    // Use raw body for signature verification (set up in server/index.ts)
+    const rawBody = (req as any).rawBody;
+    if (!rawBody) {
+      return res.status(400).send("Raw body missing");
+    }
+
     const event = stripe.webhooks.constructEvent(
-      req.body,
+      rawBody,
       sig,
       webhookSecret
     );
@@ -751,33 +759,57 @@ router.post("/api/billing/webhook", async (req: Request, res: Response) => {
 
       case "customer.subscription.updated": {
         const subscription = event.data.object as any;
-        const familyId = subscription.metadata.familyId || 
-          (await storage.getSubscription(subscription.customer))?.familyId;
+        
+        // Try to find subscription by stripeSubscriptionId first, then by customer ID
+        let existingSubscription = await storage.getSubscriptionByStripeId(subscription.id);
+        if (!existingSubscription) {
+          existingSubscription = await storage.getSubscriptionByCustomerId(subscription.customer);
+        }
 
-        if (familyId) {
+        if (existingSubscription && subscription.items?.data?.length > 0) {
           const priceId = subscription.items.data[0].price.id;
           const plan = priceId === STRIPE_PRICE_IDS.pro ? "pro" : "basic";
 
-          await storage.updateSubscription(familyId, {
-            stripeSubscriptionId: subscription.id,
-            stripePriceId: priceId,
+          const updates: any = {
             status: subscription.status,
             plan,
             currentPeriodEnd: new Date(subscription.current_period_end * 1000),
             cancelAtPeriodEnd: subscription.cancel_at_period_end,
-          });
+          };
+
+          // Only set Stripe IDs if they're present (don't overwrite with null)
+          if (subscription.id) {
+            updates.stripeSubscriptionId = subscription.id;
+          }
+          if (priceId) {
+            updates.stripePriceId = priceId;
+          }
+
+          // Use familyId-based update to ensure it works for both legacy and new records
+          await storage.updateSubscription(existingSubscription.familyId, updates);
         }
         break;
       }
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object as any;
-        const familyId = subscription.metadata.familyId || 
-          (await storage.getSubscription(subscription.customer))?.familyId;
+        
+        // Try to find subscription by stripeSubscriptionId first, then by customer ID
+        let existingSubscription = await storage.getSubscriptionByStripeId(subscription.id);
+        if (!existingSubscription) {
+          existingSubscription = await storage.getSubscriptionByCustomerId(subscription.customer);
+        }
 
-        if (familyId) {
-          await storage.updateSubscription(familyId, {
+        if (existingSubscription) {
+          // Clear all Stripe identifiers so the family can subscribe again later
+          // Keep stripeCustomerId for potential future subscriptions
+          // Use familyId-based update to ensure it works for both legacy and new records
+          await storage.updateSubscription(existingSubscription.familyId, {
             status: "canceled",
+            stripeSubscriptionId: null as any,
+            stripePriceId: null as any,
+            currentPeriodEnd: null as any,
+            cancelAtPeriodEnd: false,
           });
         }
         break;
