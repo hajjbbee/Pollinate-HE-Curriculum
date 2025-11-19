@@ -12,14 +12,30 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-**November 19, 2025** - Real-Time Collaboration (WebSockets)
-- Implemented WebSocket server for multi-user real-time collaboration
-- Session-based authentication with family access control
-- Live presence indicators showing active users viewing curriculum
-- Real-time curriculum update broadcasts after regeneration
-- Heartbeat ping/pong for stale connection cleanup
-- Auto-reconnection with proper cleanup on disconnect
-- Single-instance deployment (documented Redis migration for horizontal scaling)
+**November 19, 2025** - Stripe Subscription Billing & Enhanced Local Opportunities
+- **Stripe Subscription Billing (COMPLETE)**:
+  - Two-tier pricing: Basic ($49/month, up to 3 children) and Pro ($99/month, unlimited)
+  - Secure checkout with Stripe Checkout integration
+  - Webhook handling with HMAC signature verification (checkout.session.completed, customer.subscription.updated/deleted)
+  - Customer portal for subscription management
+  - Dashboard subscription status badges and upgrade buttons
+  - Proper IStorage interface with Stripe ID lookup methods
+  
+- **Enhanced Google Places API Integration**:
+  - Expanded keyword search from 5 to 20 educational venue types
+  - Improved deduplication using place_id tracking
+  - Increased diversity: up to 25 unique opportunities per family (up from 15)
+  - Fixed radius calculation: properly converts travel time (minutes) to search distance (meters)
+  - Better error handling and logging for API responses
+  - Search includes: museums, libraries, science centers, historical sites, nature centers, art galleries, maker spaces, farms, botanical gardens, aquariums, zoos, planetariums, observatories, wildlife sanctuaries, and community gardens
+  
+- **Real-Time Collaboration (WebSockets)**:
+  - WebSocket server for multi-user real-time collaboration
+  - Session-based authentication with family access control
+  - Live presence indicators showing active users viewing curriculum
+  - Real-time curriculum update broadcasts after regeneration
+  - Heartbeat ping/pong for stale connection cleanup
+  - Auto-reconnection with proper cleanup on disconnect
 
 ## System Architecture
 

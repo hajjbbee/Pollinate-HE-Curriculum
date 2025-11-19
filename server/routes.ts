@@ -61,6 +61,12 @@ async function searchLocalOpportunities(
   radiusMeters: number,
   country: string
 ): Promise<any[]> {
+  if (!GOOGLE_MAPS_API_KEY) {
+    console.error("GOOGLE_MAPS_API_KEY is not configured");
+    return [];
+  }
+
+  // Educational venue types for field trips
   const keywords = [
     "museum",
     "library",
@@ -74,11 +80,21 @@ async function searchLocalOpportunities(
     "aquarium",
     "zoo",
     "planetarium",
+    "children's museum",
+    "science museum",
+    "natural history museum",
+    "art museum",
+    "observatory",
+    "nature preserve",
+    "wildlife sanctuary",
+    "community garden",
   ];
 
   const opportunities: any[] = [];
+  const seenPlaceIds = new Set<string>();
 
-  for (const keyword of keywords.slice(0, 5)) {
+  // Search for all keywords to get diverse results
+  for (const keyword of keywords) {
     const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lon}&radius=${radiusMeters}&keyword=${encodeURIComponent(keyword)}&key=${GOOGLE_MAPS_API_KEY}`;
     
     try {
@@ -86,14 +102,31 @@ async function searchLocalOpportunities(
       const data = await response.json();
 
       if (data.status === "OK" && data.results) {
-        opportunities.push(...data.results.slice(0, 3));
+        // Add unique results (avoid duplicates)
+        for (const place of data.results.slice(0, 4)) {
+          if (!seenPlaceIds.has(place.place_id)) {
+            seenPlaceIds.add(place.place_id);
+            opportunities.push(place);
+          }
+        }
+      } else if (data.status === "ZERO_RESULTS") {
+        // This is normal, not all keywords will have results
+        continue;
+      } else {
+        console.warn(`Places API returned status ${data.status} for keyword "${keyword}"`);
       }
     } catch (error) {
       console.error(`Failed to search for ${keyword}:`, error);
     }
+
+    // Add small delay to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
 
-  return opportunities.slice(0, 15);
+  console.log(`Found ${opportunities.length} unique local opportunities within ${radiusMeters}m`);
+  
+  // Return up to 25 diverse opportunities
+  return opportunities.slice(0, 25);
 }
 
 // Helper function to calculate distance and drive time
@@ -318,7 +351,11 @@ router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Respon
     }
 
     // Search for local opportunities
-    const radiusMeters = Math.min(travelRadiusMinutes * 1000, 50000); // Cap at 50km
+    // Convert travel time (minutes) to distance (meters)
+    // Assume average speed of 50 km/h for city driving
+    const estimatedDistanceKm = (travelRadiusMinutes / 60) * 50;
+    const radiusMeters = Math.min(estimatedDistanceKm * 1000, 50000); // Cap at 50km
+    console.log(`Searching for opportunities within ${travelRadiusMinutes} min / ${Math.round(radiusMeters/1000)} km radius`);
     const opportunities = await searchLocalOpportunities(geoData.lat, geoData.lon, radiusMeters, country);
 
     // Save opportunities to database
