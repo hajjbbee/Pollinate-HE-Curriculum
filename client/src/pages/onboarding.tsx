@@ -143,6 +143,12 @@ export default function Onboarding() {
   };
 
   const onStep2Submit = (data: Step2Data) => {
+    if (!data.lat || !data.lng) {
+      step2Form.setError("address", {
+        message: "Please select an address from the dropdown suggestions to ensure we can find local opportunities near you.",
+      });
+      return;
+    }
     setStep2Data(data);
     setStep(3);
   };

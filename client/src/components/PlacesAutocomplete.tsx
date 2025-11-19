@@ -23,36 +23,57 @@ export function PlacesAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     // Load Google Maps script
-    const loadGoogleMaps = () => {
-      if (typeof google !== "undefined" && google.maps) {
-        setIsLoaded(true);
-        return;
-      }
+    if (typeof google !== "undefined" && google.maps) {
+      setIsLoaded(true);
+      return;
+    }
 
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-      if (!apiKey) {
-        console.error("Google Maps API key not found. Set VITE_GOOGLE_MAPS_API_KEY environment variable.");
-        return;
-      }
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+    if (!apiKey) {
+      console.error("Google Maps API key not found. Set VITE_GOOGLE_MAPS_API_KEY environment variable.");
+      setLoadError(true);
+      return;
+    }
 
-      // Check if script already exists
-      if (document.querySelector(`script[src*="maps.googleapis.com"]`)) {
-        return;
-      }
+    // Check if script already exists
+    const existingScript = document.querySelector(`script[src*="maps.googleapis.com"]`) as HTMLScriptElement;
+    if (existingScript) {
+      // Script exists but may still be loading - poll for Google availability
+      const checkInterval = setInterval(() => {
+        if (typeof google !== "undefined" && google.maps) {
+          setIsLoaded(true);
+          clearInterval(checkInterval);
+        }
+      }, 100);
 
-      const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => setIsLoaded(true);
-      script.onerror = () => console.error("Failed to load Google Maps script");
-      document.head.appendChild(script);
+      // Clear interval after 10 seconds to prevent infinite polling
+      const timeout = setTimeout(() => {
+        clearInterval(checkInterval);
+        if (typeof google === "undefined" || !google.maps) {
+          setLoadError(true);
+        }
+      }, 10000);
+
+      return () => {
+        clearInterval(checkInterval);
+        clearTimeout(timeout);
+      };
+    }
+
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setIsLoaded(true);
+    script.onerror = () => {
+      console.error("Failed to load Google Maps script");
+      setLoadError(true);
     };
-
-    loadGoogleMaps();
+    document.head.appendChild(script);
   }, []);
 
   useEffect(() => {
@@ -88,15 +109,30 @@ export function PlacesAutocomplete({
     };
   }, [isLoaded, country, onChange, onPlaceSelected]);
 
+  if (loadError) {
+    return (
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={className}
+        data-testid={dataTestId}
+        disabled
+        title="Google Maps API failed to load. Please check your internet connection or API key."
+      />
+    );
+  }
+
   return (
     <Input
       ref={inputRef}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
+      placeholder={!isLoaded ? "Loading..." : placeholder}
       className={className}
       data-testid={dataTestId}
       autoComplete="off"
+      disabled={!isLoaded}
     />
   );
 }

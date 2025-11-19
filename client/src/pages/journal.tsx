@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import DOMPurify from "dompurify";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -266,7 +267,7 @@ export default function Journal() {
                     <CardContent>
                       <div 
                         className="prose prose-sm max-w-none text-muted-foreground" 
-                        dangerouslySetInnerHTML={{ __html: entry.content }}
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(entry.content) }}
                       />
                       {entry.photoUrls && entry.photoUrls.length > 0 && (
                         <div className="grid grid-cols-3 gap-2 mt-4">
@@ -301,8 +302,4 @@ export default function Journal() {
       </div>
     </div>
   );
-}
-
-function Label({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <label className={className}>{children}</label>;
 }

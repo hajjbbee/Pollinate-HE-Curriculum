@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import DOMPurify from "dompurify";
 
 interface MapMarker {
   id: string;
@@ -91,13 +92,17 @@ export function GoogleMap({ center, markers, zoom = 12, className = "" }: Google
         title: markerData.name,
       });
 
-      // Add info window
+      // Add info window with sanitized content
+      const sanitizedName = DOMPurify.sanitize(markerData.name, { ALLOWED_TAGS: [] });
+      const sanitizedCategory = markerData.category ? DOMPurify.sanitize(markerData.category, { ALLOWED_TAGS: [] }) : "";
+      const sanitizedAddress = DOMPurify.sanitize(markerData.address, { ALLOWED_TAGS: [] });
+
       const infoWindow = new google.maps.InfoWindow({
         content: `
           <div style="padding: 8px;">
-            <h3 style="margin: 0 0 4px 0; font-weight: 600; font-size: 14px;">${markerData.name}</h3>
-            ${markerData.category ? `<div style="font-size: 12px; color: #666; margin-bottom: 4px;">${markerData.category}</div>` : ""}
-            <div style="font-size: 12px; color: #888;">${markerData.address}</div>
+            <h3 style="margin: 0 0 4px 0; font-weight: 600; font-size: 14px;">${sanitizedName}</h3>
+            ${sanitizedCategory ? `<div style="font-size: 12px; color: #666; margin-bottom: 4px;">${sanitizedCategory}</div>` : ""}
+            <div style="font-size: 12px; color: #888;">${sanitizedAddress}</div>
           </div>
         `,
       });
