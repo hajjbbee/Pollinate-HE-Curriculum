@@ -1,38 +1,217 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import type {
+  InsertFamily,
+  Family,
+  InsertChild,
+  Child,
+  InsertCurriculum,
+  Curriculum,
+  InsertJournalEntry,
+  JournalEntry,
+  InsertLocalOpportunity,
+  LocalOpportunity,
+  User,
+  UpsertUser,
+} from "@shared/schema";
 
 export interface IStorage {
+  // User (for authentication)
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: UpsertUser): Promise<User>;
+
+  // Family
+  createFamily(family: InsertFamily): Promise<Family>;
+  getFamily(userId: string): Promise<Family | null>;
+  updateFamily(userId: string, updates: Partial<InsertFamily>): Promise<Family>;
+
+  // Children
+  createChild(child: InsertChild): Promise<Child>;
+  getChildren(familyId: string): Promise<Child[]>;
+  getChildById(childId: string): Promise<Child | null>;
+  updateChild(childId: string, updates: Partial<InsertChild>): Promise<Child>;
+  deleteChild(childId: string): Promise<void>;
+
+  // Curriculum
+  createCurriculum(curriculum: InsertCurriculum): Promise<Curriculum>;
+  getActiveCurriculum(familyId: string): Promise<Curriculum | null>;
+  getAllCurricula(familyId: string): Promise<Curriculum[]>;
+  deactivateAllCurricula(familyId: string): Promise<void>;
+
+  // Journal Entries
+  createJournalEntry(entry: InsertJournalEntry): Promise<JournalEntry>;
+  getJournalEntries(familyId: string): Promise<JournalEntry[]>;
+  getJournalEntriesByChild(childId: string): Promise<JournalEntry[]>;
+  updateJournalEntry(entryId: string, updates: Partial<InsertJournalEntry>): Promise<JournalEntry>;
+  deleteJournalEntry(entryId: string): Promise<void>;
+
+  // Local Opportunities
+  createOpportunity(opportunity: InsertLocalOpportunity): Promise<LocalOpportunity>;
+  getOpportunities(familyId: string): Promise<LocalOpportunity[]>;
+  deleteOpportunitiesByFamily(familyId: string): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
+import { db } from "./db";
+import {
+  users,
+  families,
+  children,
+  curricula,
+  journalEntries,
+  localOpportunities,
+} from "@shared/schema";
+import { eq, and, desc } from "drizzle-orm";
 
-  constructor() {
-    this.users = new Map();
-  }
-
+export class DatabaseStorage implements IStorage {
+  // User (for authentication)
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  // Family
+  async createFamily(family: InsertFamily): Promise<Family> {
+    const [result] = await db.insert(families).values(family).returning();
+    return result;
+  }
+
+  async getFamily(userId: string): Promise<Family | null> {
+    const [result] = await db.select().from(families).where(eq(families.userId, userId));
+    return result || null;
+  }
+
+  async updateFamily(userId: string, updates: Partial<InsertFamily>): Promise<Family> {
+    const [result] = await db
+      .update(families)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(families.userId, userId))
+      .returning();
+    return result;
+  }
+
+  // Children
+  async createChild(child: InsertChild): Promise<Child> {
+    const [result] = await db.insert(children).values(child).returning();
+    return result;
+  }
+
+  async getChildren(familyId: string): Promise<Child[]> {
+    return await db.select().from(children).where(eq(children.familyId, familyId));
+  }
+
+  async getChildById(childId: string): Promise<Child | null> {
+    const [result] = await db.select().from(children).where(eq(children.id, childId));
+    return result || null;
+  }
+
+  async updateChild(childId: string, updates: Partial<InsertChild>): Promise<Child> {
+    const [result] = await db
+      .update(children)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(children.id, childId))
+      .returning();
+    return result;
+  }
+
+  async deleteChild(childId: string): Promise<void> {
+    await db.delete(children).where(eq(children.id, childId));
+  }
+
+  // Curriculum
+  async createCurriculum(curriculum: InsertCurriculum): Promise<Curriculum> {
+    const [result] = await db.insert(curricula).values(curriculum).returning();
+    return result;
+  }
+
+  async getActiveCurriculum(familyId: string): Promise<Curriculum | null> {
+    const [result] = await db
+      .select()
+      .from(curricula)
+      .where(and(eq(curricula.familyId, familyId), eq(curricula.isActive, true)))
+      .orderBy(desc(curricula.generatedAt));
+    return result || null;
+  }
+
+  async getAllCurricula(familyId: string): Promise<Curriculum[]> {
+    return await db
+      .select()
+      .from(curricula)
+      .where(eq(curricula.familyId, familyId))
+      .orderBy(desc(curricula.generatedAt));
+  }
+
+  async deactivateAllCurricula(familyId: string): Promise<void> {
+    await db
+      .update(curricula)
+      .set({ isActive: false })
+      .where(eq(curricula.familyId, familyId));
+  }
+
+  // Journal Entries
+  async createJournalEntry(entry: InsertJournalEntry): Promise<JournalEntry> {
+    const [result] = await db.insert(journalEntries).values(entry).returning();
+    return result;
+  }
+
+  async getJournalEntries(familyId: string): Promise<JournalEntry[]> {
+    return await db
+      .select()
+      .from(journalEntries)
+      .where(eq(journalEntries.familyId, familyId))
+      .orderBy(desc(journalEntries.entryDate));
+  }
+
+  async getJournalEntriesByChild(childId: string): Promise<JournalEntry[]> {
+    return await db
+      .select()
+      .from(journalEntries)
+      .where(eq(journalEntries.childId, childId))
+      .orderBy(desc(journalEntries.entryDate));
+  }
+
+  async updateJournalEntry(entryId: string, updates: Partial<InsertJournalEntry>): Promise<JournalEntry> {
+    const [result] = await db
+      .update(journalEntries)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(journalEntries.id, entryId))
+      .returning();
+    return result;
+  }
+
+  async deleteJournalEntry(entryId: string): Promise<void> {
+    await db.delete(journalEntries).where(eq(journalEntries.id, entryId));
+  }
+
+  // Local Opportunities
+  async createOpportunity(opportunity: InsertLocalOpportunity): Promise<LocalOpportunity> {
+    const [result] = await db.insert(localOpportunities).values(opportunity).returning();
+    return result;
+  }
+
+  async getOpportunities(familyId: string): Promise<LocalOpportunity[]> {
+    return await db
+      .select()
+      .from(localOpportunities)
+      .where(eq(localOpportunities.familyId, familyId))
+      .orderBy(localOpportunities.driveMinutes);
+  }
+
+  async deleteOpportunitiesByFamily(familyId: string): Promise<void> {
+    await db.delete(localOpportunities).where(eq(localOpportunities.familyId, familyId));
+  }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

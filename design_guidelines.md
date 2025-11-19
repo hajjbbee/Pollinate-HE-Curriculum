@@ -1,125 +1,136 @@
 # Design Guidelines: Evergreen Curriculum AI
 
 ## Design Approach
-**Hybrid Design System** - Drawing from Notion's organizational clarity, Linear's refined typography, and Asana's task-oriented patterns. The application requires trust, warmth, and efficiency for family-focused educational planning across multiple regions.
+**Hybrid Design System** - Drawing from Notion's organizational clarity, Linear's refined typography, and Asana's task-oriented patterns. Creates trust, warmth, and efficiency for family-focused educational planning across US, Australia, and New Zealand.
 
 ## Core Design Principles
 - **Clarity First**: Information-dense content must be scannable and hierarchical
-- **Warm Professionalism**: Balance educational credibility with family-friendly approachability
-- **Efficient Navigation**: Parents manage complex schedules - reduce cognitive load
-- **Regional Flexibility**: Seamless adaptation for US, Australia, and New Zealand contexts
+- **Warm Professionalism**: Educational credibility with family-friendly approachability
+- **Efficient Navigation**: Reduce cognitive load for parents managing complex schedules
+- **Regional Flexibility**: Seamless adaptation for multiple regions
+
+## Color System
+
+**Nature-Inspired Green Palette**:
+- **Primary Green**: Forest green #2D5F3F (buttons, primary CTAs, active states)
+- **Secondary Green**: Sage green #7A9B7E (secondary buttons, borders, accents)
+- **Light Green**: Soft mint #E8F4E8 (backgrounds, cards, subtle highlights)
+- **Deep Green**: Evergreen #1A3D2E (headers, important text, navigation)
+
+**Supporting Colors**:
+- **Warm Neutrals**: Cream #FAF9F6 (page backgrounds), Warm gray #6B6B6B (body text)
+- **Accent Earth Tones**: Terracotta #C95D3F (alerts, important badges), Golden #D4A574 (achievements, mastery)
+- **Semantic Colors**: Success (growth green #4A7C4E), Warning (amber #E8A648), Error (rust red #C14E3D)
+
+**Application**:
+- Page backgrounds: Cream base with light green cards
+- Navigation: Deep green sidebar/header with white text
+- Primary actions: Forest green buttons with white text
+- Secondary actions: Sage green outline buttons
+- Disabled states: 40% opacity of primary colors
+- Hover states: Darken primary by 10%
+- Focus rings: Forest green with 2px offset
 
 ## Typography System
 
 **Font Stack**: 
-- Primary: Inter (via Google Fonts) - clean, highly legible for data
-- Accent: Lexend (via Google Fonts) - friendly, warm for headings
+- Primary: Inter (Google Fonts) - data and body text
+- Accent: Lexend (Google Fonts) - headings and warmth
 
 **Hierarchy**:
-- Hero/Page Titles: text-4xl/text-5xl, font-bold, Lexend
-- Section Headers: text-2xl/text-3xl, font-semibold, Lexend  
-- Card Titles: text-lg/text-xl, font-semibold, Inter
-- Body Text: text-base, font-normal, Inter
-- Captions/Meta: text-sm, font-medium, Inter
-- Small Labels: text-xs, uppercase tracking-wide
+- Hero/Page Titles: text-5xl font-bold Lexend, deep green
+- Section Headers: text-3xl font-semibold Lexend, deep green
+- Card Titles: text-xl font-semibold Inter, warm gray
+- Body Text: text-base font-normal Inter, warm gray
+- Captions: text-sm font-medium Inter, secondary gray
+- Labels: text-xs uppercase tracking-wide, tertiary gray
 
 ## Layout System
 
-**Spacing Primitives**: Use Tailwind units **2, 4, 6, 8, 12, 16** for consistency
-- Component padding: p-4, p-6, p-8
-- Section spacing: py-12, py-16
-- Card gaps: gap-4, gap-6
-- Tight spacing: space-y-2, space-y-4
+**Spacing**: Tailwind units **2, 4, 6, 8, 12, 16**
+- Component padding: p-6 (cards), p-8 (sections)
+- Section spacing: py-16 (desktop), py-12 (mobile)
+- Card gaps: gap-6
+- Tight spacing: space-y-4
 
-**Grid System**:
-- Dashboard: 12-column responsive grid
-- Card layouts: grid-cols-1 md:grid-cols-2 lg:grid-cols-3
-- Weekly view: Full-width with collapsible child sections
-- Max container width: max-w-7xl for main content
+**Grid**: 12-column responsive, max-w-7xl containers
 
 ## Component Library
 
+### Marketing/Landing Page
+**Hero Section**: Full-width, 70vh height
+- Large hero image: Warm family homeschool scene (parent with 2-3 children at wooden table with books, nature visible through window, soft natural lighting)
+- Overlay: Subtle gradient (dark to transparent bottom-up) for text readability
+- Headline: text-5xl Lexend bold in white, subheadline text-xl
+- CTA buttons: Forest green primary + sage outline secondary, both with backdrop-blur-md
+- Position: Centered text with buttons below
+
+**Additional Sections**:
+- Features grid: 3 columns (lg), 2 (md), 1 (sm) - icons in forest green circles, light green card backgrounds
+- Benefits showcase: Alternating 2-column layout with images (children learning, nature scenes, family planning)
+- Testimonials: 2-column cards with parent photos, sage green borders
+- Pricing cards: Light green background for featured plan, forest green CTAs
+- Footer: Deep green background, cream text, 4-column layout (product, company, resources, legal)
+
 ### Navigation
-- Top navbar: Sticky header with family name, child quick-switcher, settings
-- Sidebar (desktop): Collapsible navigation with icons - Dashboard, Curriculum, Journal, Opportunities, Settings
-- Bottom nav (mobile): Fixed icons for primary sections
+- Top navbar: Deep green background, cream text, sticky, child quick-switcher with avatar circles
+- Sidebar (desktop): Deep green, collapsible with icons - Dashboard, Curriculum, Journal, Opportunities, Settings
+- Bottom nav (mobile): Fixed, light green background, forest green active icons
 
-### Onboarding Flow
-- Multi-step wizard: Progress indicator at top, large form fields, clear "Next" CTAs
-- Country selector: Flag icons with country names
-- Child cards: Rounded, friendly cards with add/remove actions
-- Address input: Autocomplete with map preview (optional visual)
-
-### Dashboard
-- Weekly carousel: Horizontal scroll cards for 12 weeks, current week highlighted
-- Family theme banner: Full-width, soft gradient background, large typography
-- Child sections: Expandable accordions with avatar, age, mastery badges
-- Daily plan: Grid layout Monday-Friday + Weekend summary
-- Activity cards: Icon + title + description, subtle borders
+### Dashboard Components
+- **Weekly Carousel**: Horizontal scroll, light green cards, current week with forest green border (3px), golden badge for achievements
+- **Family Theme Banner**: Full-width, soft gradient (light green to cream), large Lexend typography in deep green
+- **Child Sections**: Expandable accordions, cream background, forest green headers, circular avatars with sage borders
+- **Daily Plans**: Monday-Friday grid, weekend summary card, light green backgrounds, forest green activity icons
+- **Activity Cards**: White background, sage borders, forest green icons, hover lifts with subtle shadow
 
 ### Curriculum View
-- Calendar-style week grid with drag-to-reorder capability
-- "Regenerate Week" button: Prominent, icon with spinner state
-- Mastery progress: Horizontal badges/pills showing progression levels
-- Deep dive chips: Colorful tags for topics of high interest
+- Calendar grid: White cells, light green current day, drag handles in forest green
+- "Regenerate Week" button: Forest green, prominent placement, spinner state
+- Mastery badges: Golden pills showing progression, terracotta for areas needing focus
+- Deep dive chips: Colorful tags (various greens, earth tones) for high-interest topics
 
-### Journal Entries
-- Rich text editor: Clean toolbar, generous text area
-- Photo upload: Drag-drop zone with thumbnail previews in grid
-- Entry cards: Date header, child name badge, text preview, image thumbnails
-- Filter/search: Date range picker, child selector
-
-### Local Opportunities
-- Opportunity cards: Image thumbnail (if available), name, address, drive time badge, cost label, "Why this fits" text, external link icon
-- Map view: Interactive pins with popup cards
-- Distance display: Adaptive (km for AU/NZ, miles for US)
-- Filter controls: Distance slider, cost range, category tags
+### Journal & Opportunities
+- **Journal Entries**: White cards on cream background, forest green date headers, sage category badges, photo thumbnails in 3-column grid
+- **Opportunity Cards**: Light green background, thumbnail images (if available), terracotta "distance" badges, forest green external link icons, "Why this fits" in warm gray text
+- **Map View**: Interactive with forest green pins
 
 ### Forms & Inputs
-- Input fields: Rounded corners (rounded-lg), clear labels above, helper text below
-- Buttons: Primary (solid), Secondary (outline), Tertiary (ghost) - all with rounded-lg
-- Select dropdowns: Native styling enhanced with icons
-- Toggles: Large, friendly switches for preferences
-- Date pickers: Calendar popup with timezone awareness
+- Fields: White background, sage border, rounded-lg, forest green labels
+- Buttons: Primary (forest green solid), Secondary (sage outline), focus ring in forest green
+- Toggles: Forest green when active, gray when off
+- Date pickers: Forest green calendar accents
 
 ### Data Display
-- Stats cards: Icon, large number, small label - grid layout
-- Tables: Zebra striping for readability, sticky headers
-- Progress indicators: Linear progress bars with percentage labels
-- Badges: Rounded-full pills for tags, statuses, mastery levels
+- **Stats Cards**: Light green background, forest green large numbers, icons in terracotta circles
+- **Tables**: Alternating cream/white rows, deep green headers, sticky
+- **Progress Bars**: Forest green fill on light green track, golden for mastery completion
+- **Badges**: Rounded-full, forest green for active, sage for completed, terracotta for alerts
 
 ### Overlays
-- Modals: Centered, max-w-2xl, backdrop blur, close icon top-right
-- Toasts: Bottom-right notifications, slide-in animation
-- Tooltips: Minimal, appear on hover for icon explanations
-
-## Animations
-Use sparingly - only for functional feedback:
-- Loading states: Subtle spinner on buttons during AI generation
-- Accordion expand/collapse: Smooth height transition
-- Toast notifications: Slide-in/fade-out
-- NO decorative scroll animations or parallax effects
+- Modals: White background, deep green headers, backdrop blur with cream tint
+- Toasts: Light green background, forest green icons, slide-in from bottom-right
+- Tooltips: Deep green background, cream text
 
 ## Images
 
-**Hero Section (Landing/Marketing)**:
-- Large hero image: Warm family learning scene (parent with children at table with books/tablet)
-- Position: Full-width banner, 60vh height, subtle overlay for text readability
-- Buttons on hero: Use backdrop-blur-md background
+**Hero Section**: Full-width 70vh banner with warm homeschool family scene
+**Dashboard**: Circular child avatars (uploaded or initials on sage background)
+**Opportunities**: Square thumbnails (120x120) for venues
+**Journal**: User-uploaded photos in grid with lightbox
+**Empty States**: Simple line illustrations in sage green
+**Marketing Sections**: Family learning scenes, nature imagery, planning activities (2-3 images minimum)
 
-**Dashboard/App**:
-- Child avatars: Circular placeholders with initials or uploaded photos
-- Opportunity thumbnails: Small square images (100x100) for local venues
-- Journal photos: User-uploaded, displayed as thumbnail grid with lightbox on click
-
-**Illustrations**: 
-- Empty states: Friendly, simple line illustrations (e.g., "No journal entries yet")
-- Onboarding steps: Optional small icons/illustrations to guide flow
+## Animations
+Minimal, functional only:
+- Button loading: Forest green spinner
+- Accordion transitions: Smooth height
+- Toast notifications: Slide-in/fade
+- NO decorative animations
 
 ## Accessibility
-- Minimum touch targets: 44x44px for all interactive elements
-- Form labels: Always visible, properly associated with inputs
-- Color contrast: WCAG AA compliant for all text
-- Focus states: Visible ring-2 ring-offset-2 on all interactive elements
-- Keyboard navigation: Tab order follows visual hierarchy
-- Screen reader: Semantic HTML, ARIA labels for icon buttons
+- Touch targets: 44x44px minimum
+- Color contrast: WCAG AA (forest green on cream passes)
+- Focus states: ring-2 ring-forest-green ring-offset-2
+- Semantic HTML with ARIA labels
+- Keyboard navigation following visual hierarchy

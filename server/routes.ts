@@ -1,15 +1,591 @@
-import type { Express } from "express";
-import { createServer, type Server } from "http";
+import { Router, type Request, type Response, type Express } from "express";
 import { storage } from "./storage";
+import { insertFamilySchema, insertChildSchema, insertJournalEntrySchema, type CurriculumData, type WeekCurriculum } from "@shared/schema";
+import { z } from "zod";
+import Anthropic from "@anthropic-ai/sdk";
+import { setupAuth, isAuthenticated } from "./replitAuth";
+import { createServer } from "http";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  // put application routes here
-  // prefix all routes with /api
+const router = Router();
 
-  // use storage to perform CRUD operations on the storage interface
-  // e.g. storage.insertUser(user) or storage.getUserByUsername(username)
+// Initialize Anthropic client
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
-  const httpServer = createServer(app);
+// Google Maps API key
+const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
-  return httpServer;
+// Helper function to geocode address
+async function geocodeAddress(address: string): Promise<{ lat: number; lon: number; city?: string; state?: string; postalCode?: string }> {
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_API_KEY}`;
+  const response = await fetch(url);
+  const data = await response.json();
+
+  if (data.status !== "OK" || !data.results || data.results.length === 0) {
+    throw new Error("Failed to geocode address");
+  }
+
+  const result = data.results[0];
+  const location = result.geometry.location;
+
+  // Extract city, state, postal code
+  let city, state, postalCode;
+  for (const component of result.address_components) {
+    if (component.types.includes("locality")) {
+      city = component.long_name;
+    }
+    if (component.types.includes("administrative_area_level_1")) {
+      state = component.short_name;
+    }
+    if (component.types.includes("postal_code")) {
+      postalCode = component.long_name;
+    }
+  }
+
+  return {
+    lat: location.lat,
+    lon: location.lng,
+    city,
+    state,
+    postalCode,
+  };
+}
+
+// Helper function to search for local opportunities
+async function searchLocalOpportunities(
+  lat: number,
+  lon: number,
+  radiusMeters: number,
+  country: string
+): Promise<any[]> {
+  const keywords = [
+    "museum",
+    "library",
+    "science center",
+    "historical site",
+    "nature center",
+    "art gallery",
+    "maker space",
+    "farm",
+    "botanical garden",
+    "aquarium",
+    "zoo",
+    "planetarium",
+  ];
+
+  const opportunities: any[] = [];
+
+  for (const keyword of keywords.slice(0, 5)) {
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lon}&radius=${radiusMeters}&keyword=${encodeURIComponent(keyword)}&key=${GOOGLE_MAPS_API_KEY}`;
+    
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.status === "OK" && data.results) {
+        opportunities.push(...data.results.slice(0, 3));
+      }
+    } catch (error) {
+      console.error(`Failed to search for ${keyword}:`, error);
+    }
+  }
+
+  return opportunities.slice(0, 15);
+}
+
+// Helper function to calculate distance and drive time
+function calculateDriveTime(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+  
+  // Assume average speed of 50 km/h for city driving
+  const minutes = Math.round((distance / 50) * 60);
+  return minutes;
+}
+
+// Helper function to generate curriculum with Claude
+async function generateCurriculum(
+  family: any,
+  children: any[],
+  localOpps: any[]
+): Promise<CurriculumData> {
+  const today = new Date();
+  const seasonMap: Record<string, string> = {
+    US: today.getMonth() >= 2 && today.getMonth() <= 4 ? "Spring" : today.getMonth() >= 5 && today.getMonth() <= 7 ? "Summer" : today.getMonth() >= 8 && today.getMonth() <= 10 ? "Fall" : "Winter",
+    AU: today.getMonth() >= 8 && today.getMonth() <= 10 ? "Spring" : today.getMonth() >= 11 || today.getMonth() <= 1 ? "Summer" : today.getMonth() >= 2 && today.getMonth() <= 4 ? "Fall" : "Winter",
+    NZ: today.getMonth() >= 8 && today.getMonth() <= 10 ? "Spring" : today.getMonth() >= 11 || today.getMonth() <= 1 ? "Summer" : today.getMonth() >= 2 && today.getMonth() <= 4 ? "Fall" : "Winter",
+  };
+
+  const season = seasonMap[family.country] || "Spring";
+
+  const childrenInfo = children.map(child => {
+    const birthDate = new Date(child.birthdate);
+    const age = Math.floor((today.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    return {
+      name: child.name,
+      age,
+      interests: child.interests || [],
+      learningStyle: child.learningStyle || "Mixed",
+    };
+  });
+
+  const opportunitiesInfo = localOpps.slice(0, 20).map(opp => ({
+    name: opp.name,
+    address: opp.address,
+    category: opp.category || "Educational",
+  }));
+
+  const systemPrompt = `You are an expert homeschool curriculum designer specializing in a Charlotte Mason + Montessori + unschooling hybrid approach. You create living, interest-led curricula that prioritize:
+
+1. DEPTH OVER BREADTH - When a child shows high interest, dive deep
+2. MASTERY LEVELS - Track progression: Exposure → Developing → Strong → Mastery → Mentor
+3. NATURE & REAL EXPERIENCES - Prioritize outdoor learning and hands-on activities
+4. FAMILY THEMES - Unite siblings with shared themes while honoring individual paths
+5. LOCAL OPPORTUNITIES - Integrate real-world educational experiences
+
+CRITICAL: Return ONLY valid JSON. No markdown, no code blocks, no explanations.`;
+
+  const userPrompt = `Generate a personalized 12-week rolling curriculum for the ${family.familyName}.
+
+FAMILY CONTEXT:
+- Location: ${family.city}, ${family.state}, ${family.country}
+- Season: ${season}
+- Travel Radius: ${family.travelRadiusMinutes} minutes
+- Flex for High Interest: ${family.flexForHighInterest ? "Yes" : "No"}
+
+CHILDREN:
+${childrenInfo.map(child => `- ${child.name} (age ${child.age}): Interests: ${child.interests.join(", ")}; Learning style: ${child.learningStyle}`).join("\n")}
+
+LOCAL OPPORTUNITIES (sample):
+${opportunitiesInfo.slice(0, 10).map(opp => `- ${opp.name} at ${opp.address}`).join("\n")}
+
+REQUIREMENTS:
+1. Create exactly 12 weeks of curriculum
+2. Each week has a family theme that links all children
+3. For each child, provide:
+   - 2-3 "deep dives" (high-interest topics to explore deeply)
+   - Daily plan (Monday-Friday with specific activities, Weekend summary)
+   - Mastery updates (3-5 subjects with current level: Exposure, Developing, Strong, Mastery, or Mentor)
+4. Include 3-8 local opportunities per week with:
+   - Name and address
+   - Drive time in minutes
+   - Cost (Free, $, $$, $$$)
+   - Why this fits the curriculum
+   - Suggested dates/times
+   - Website link (if available)
+
+Return JSON in this EXACT structure (no markdown, no code blocks):
+{
+  "generatedAt": "2025-11-19T08:00:00Z",
+  "weeks": [
+    {
+      "weekNumber": 1,
+      "familyTheme": "Discovering Our Local Ecosystem",
+      "familyActivities": ["Nature walk", "Bird watching", "Stream study"],
+      "localOpportunities": [
+        {
+          "name": "City Nature Center",
+          "address": "123 Main St",
+          "driveMinutes": 15,
+          "cost": "Free",
+          "why": "Hands-on nature exploration aligned with ecosystem theme",
+          "link": "https://example.com",
+          "dates": "Tuesday 10am-12pm or Saturday 2pm-4pm"
+        }
+      ],
+      "children": [
+        {
+          "childId": "${children[0]?.id}",
+          "name": "${children[0]?.name}",
+          "age": ${childrenInfo[0]?.age},
+          "deepDives": ["Bird identification", "Stream ecosystems"],
+          "dailyPlan": {
+            "Monday": ["Morning nature walk", "Sketch birds observed", "Read nature journal entries"],
+            "Tuesday": ["Visit nature center", "Collect specimens", "Start nature journal"],
+            "Wednesday": ["Stream study", "Water testing", "Draw stream life"],
+            "Thursday": ["Bird watching", "Use field guides", "Track species"],
+            "Friday": ["Create ecosystem diagram", "Share findings", "Plan next week"],
+            "Weekend": "Family hike with nature journaling and bird watching"
+          },
+          "masteryUpdates": {
+            "Nature Observation": "Developing",
+            "Scientific Drawing": "Exposure",
+            "Ecosystem Understanding": "Strong"
+          }
+        }
+      ]
+    }
+  ]
+}`;
+
+  const message = await anthropic.messages.create({
+    model: "claude-3-5-sonnet-20241022",
+    max_tokens: 16000,
+    temperature: 0.7,
+    system: systemPrompt,
+    messages: [
+      {
+        role: "user",
+        content: userPrompt,
+      },
+    ],
+  });
+
+  const responseText = message.content[0].type === "text" ? message.content[0].text : "";
+  
+  // Remove markdown code blocks if present
+  let cleanedResponse = responseText.trim();
+  if (cleanedResponse.startsWith("```json")) {
+    cleanedResponse = cleanedResponse.slice(7);
+  }
+  if (cleanedResponse.startsWith("```")) {
+    cleanedResponse = cleanedResponse.slice(3);
+  }
+  if (cleanedResponse.endsWith("```")) {
+    cleanedResponse = cleanedResponse.slice(0, -3);
+  }
+  cleanedResponse = cleanedResponse.trim();
+
+  const curriculumData = JSON.parse(cleanedResponse);
+  return curriculumData;
+}
+
+// Auth route to get current user
+router.get("/api/auth/user", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user.claims.sub;
+    const user = await storage.getUser(userId);
+    res.json(user);
+  } catch (error: any) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ message: "Failed to fetch user" });
+  }
+});
+
+// Onboarding endpoint
+router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const { familyName, country, address, travelRadiusMinutes, flexForHighInterest, children: childrenData } = req.body;
+
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Check if family already exists
+    const existingFamily = await storage.getFamily(req.user.id);
+    if (existingFamily) {
+      return res.status(400).json({ error: "Family already exists" });
+    }
+
+    // Geocode address
+    const geoData = await geocodeAddress(address);
+
+    // Create family
+    const family = await storage.createFamily({
+      userId: req.user.id,
+      familyName,
+      country,
+      address,
+      city: geoData.city,
+      state: geoData.state,
+      postalCode: geoData.postalCode,
+      latitude: geoData.lat,
+      longitude: geoData.lon,
+      travelRadiusMinutes,
+      flexForHighInterest,
+    });
+
+    // Create children
+    const createdChildren = [];
+    for (const childData of childrenData) {
+      const child = await storage.createChild({
+        familyId: family.id,
+        name: childData.name,
+        birthdate: childData.birthdate,
+        interests: childData.interests || [],
+        learningStyle: childData.learningStyle,
+      });
+      createdChildren.push(child);
+    }
+
+    // Search for local opportunities
+    const radiusMeters = Math.min(travelRadiusMinutes * 1000, 50000); // Cap at 50km
+    const opportunities = await searchLocalOpportunities(geoData.lat, geoData.lon, radiusMeters, country);
+
+    // Save opportunities to database
+    for (const opp of opportunities) {
+      try {
+        const driveTime = calculateDriveTime(geoData.lat, geoData.lon, opp.geometry.location.lat, opp.geometry.location.lng);
+        
+        await storage.createOpportunity({
+          familyId: family.id,
+          name: opp.name,
+          address: opp.vicinity,
+          latitude: opp.geometry.location.lat,
+          longitude: opp.geometry.location.lng,
+          driveMinutes: driveTime,
+          cost: opp.price_level ? "$".repeat(opp.price_level) : "Free",
+          category: opp.types?.[0] || "Educational",
+          placeId: opp.place_id,
+        });
+      } catch (error) {
+        console.error("Failed to save opportunity:", error);
+      }
+    }
+
+    // Generate initial curriculum
+    const curriculumData = await generateCurriculum(family, createdChildren, opportunities);
+
+    await storage.createCurriculum({
+      familyId: family.id,
+      generatedAt: new Date(),
+      curriculumData,
+      isActive: true,
+    });
+
+    res.json({ family, children: createdChildren });
+  } catch (error: any) {
+    console.error("Onboarding error:", error);
+    res.status(500).json({ error: error.message || "Failed to complete onboarding" });
+  }
+});
+
+// Get family
+router.get("/api/family", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    res.json(family);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get children
+router.get("/api/children", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const children = await storage.getChildren(family.id);
+    res.json(children);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get active curriculum
+router.get("/api/curriculum", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const curriculum = await storage.getActiveCurriculum(family.id);
+    if (!curriculum) {
+      return res.status(404).json({ error: "No active curriculum found" });
+    }
+
+    res.json(curriculum);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Regenerate specific week
+router.post("/api/curriculum/regenerate", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { weekNumber } = req.body;
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const children = await storage.getChildren(family.id);
+    const opportunities = await storage.getOpportunities(family.id);
+
+    // Generate new curriculum
+    const curriculumData = await generateCurriculum(family, children, opportunities);
+
+    // Deactivate old curricula
+    await storage.deactivateAllCurricula(family.id);
+
+    // Save new curriculum
+    const newCurriculum = await storage.createCurriculum({
+      familyId: family.id,
+      generatedAt: new Date(),
+      curriculumData,
+      isActive: true,
+    });
+
+    res.json(newCurriculum);
+  } catch (error: any) {
+    console.error("Regenerate error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Journal endpoints
+router.post("/api/journal", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const { childId, entryDate, content, photoUrls } = req.body;
+
+    const entry = await storage.createJournalEntry({
+      childId,
+      familyId: family.id,
+      entryDate,
+      content,
+      photoUrls: photoUrls || [],
+    });
+
+    res.json(entry);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/api/journal", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const entries = await storage.getJournalEntries(family.id);
+    res.json(entries);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Local opportunities
+router.get("/api/opportunities", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const opportunities = await storage.getOpportunities(family.id);
+    res.json(opportunities);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Object storage routes
+router.post("/api/objects/upload", isAuthenticated, async (req: Request, res: Response) => {
+  const objectStorageService = new ObjectStorageService();
+  const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+  res.json({ uploadURL });
+});
+
+router.put("/api/journal-photos", isAuthenticated, async (req: any, res: Response) => {
+  if (!req.body.photoURL) {
+    return res.status(400).json({ error: "photoURL is required" });
+  }
+
+  const userId = req.user.claims.sub;
+
+  try {
+    const objectStorageService = new ObjectStorageService();
+    const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+      req.body.photoURL,
+      {
+        owner: userId,
+        visibility: "private",
+      },
+    );
+
+    res.status(200).json({
+      objectPath: objectPath,
+    });
+  } catch (error) {
+    console.error("Error setting photo ACL:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/objects/:objectPath(*)", isAuthenticated, async (req: any, res: Response) => {
+  const userId = req.user?.claims?.sub;
+  const objectStorageService = new ObjectStorageService();
+  try {
+    const objectFile = await objectStorageService.getObjectEntityFile(
+      req.path,
+    );
+    const canAccess = await objectStorageService.canAccessObjectEntity({
+      objectFile,
+      userId: userId,
+    });
+    if (!canAccess) {
+      return res.sendStatus(401);
+    }
+    objectStorageService.downloadObject(objectFile, res);
+  } catch (error) {
+    console.error("Error checking object access:", error);
+    if (error instanceof ObjectNotFoundError) {
+      return res.sendStatus(404);
+    }
+    return res.sendStatus(500);
+  }
+});
+
+export async function registerRoutes(app: Express) {
+  const server = createServer(app);
+
+  // Setup authentication
+  await setupAuth(app);
+
+  // Register all routes
+  app.use(router);
+
+  return server;
 }
