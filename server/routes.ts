@@ -6,6 +6,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { createServer } from "http";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { CollaborationService } from "./websocket";
 
 const router = Router();
 
@@ -449,6 +450,12 @@ router.post("/api/curriculum/regenerate", isAuthenticated, async (req: Request, 
       isActive: true,
     });
 
+    // Broadcast curriculum update to other connected users
+    const collabService = getCollaborationService();
+    if (collabService) {
+      collabService.broadcastCurriculumGenerated(family.id);
+    }
+
     res.json(newCurriculum);
   } catch (error: any) {
     console.error("Regenerate error:", error);
@@ -578,11 +585,54 @@ router.get("/objects/:objectPath(*)", isAuthenticated, async (req: any, res: Res
   }
 });
 
+// Global collaboration service instance for route access
+let collaborationService: CollaborationService | null = null;
+
+export function getCollaborationService(): CollaborationService | null {
+  return collaborationService;
+}
+
 export async function registerRoutes(app: Express) {
   const server = createServer(app);
 
   // Setup authentication
-  await setupAuth(app);
+  const sessionMiddleware = await setupAuth(app);
+
+  // Setup WebSocket collaboration with auth validator
+  const authValidator = async (req: any) => {
+    try {
+      // Get session from request (Replit Auth stores user in session)
+      if (!req.session || !req.session.passport || !req.session.passport.user) {
+        return null;
+      }
+
+      const sessionUser = req.session.passport.user;
+      const userId = sessionUser.claims.sub;
+      
+      if (!userId) return null;
+
+      // Get the user's family
+      const family = await storage.getFamilyByUserId(userId);
+      if (!family) return null;
+
+      // Get user details from storage or session
+      const user = await storage.getUserById(userId);
+      const userName = user 
+        ? `${user.firstName} ${user.lastName}`.trim() 
+        : sessionUser.claims.email?.split('@')[0] || "User";
+
+      return { 
+        userId, 
+        userName, 
+        familyId: family.id 
+      };
+    } catch (error) {
+      console.error("WebSocket auth validation failed:", error);
+      return null;
+    }
+  };
+
+  collaborationService = new CollaborationService(server, storage, authValidator, sessionMiddleware);
 
   // Register all routes
   app.use(router);

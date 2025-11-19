@@ -64,7 +64,8 @@ async function upsertUser(
 
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
-  app.use(getSession());
+  const sessionMiddleware = getSession();
+  app.use(sessionMiddleware);
   app.use(passport.initialize());
   app.use(passport.session());
 
@@ -130,6 +131,8 @@ export async function setupAuth(app: Express) {
       );
     });
   });
+
+  return sessionMiddleware;
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {

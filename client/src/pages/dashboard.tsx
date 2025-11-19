@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useCollaboration } from "@/hooks/use-collaboration";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,7 +10,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { Sparkles, RefreshCw, Calendar, TrendingUp, MapPin, BookOpen, ExternalLink } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sparkles, RefreshCw, Calendar, TrendingUp, MapPin, BookOpen, ExternalLink, Users } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { CurriculumData, WeekCurriculum } from "@shared/schema";
 
@@ -48,6 +51,34 @@ export default function Dashboard() {
     retry: false,
     enabled: !!user,
   });
+
+  // Setup real-time collaboration
+  const { isConnected, activeUsers, sendPresence } = useCollaboration({
+    user,
+    familyId: familyData?.id || null,
+    enabled: !!user && !!familyData,
+  });
+
+  // Send presence update when viewing a week (only when connected)
+  useEffect(() => {
+    if (isConnected && familyData && currentWeekIndex >= 0) {
+      sendPresence(currentWeekIndex + 1);
+    }
+  }, [isConnected, currentWeekIndex, familyData, sendPresence]);
+
+  // Listen for curriculum updates from other users
+  useEffect(() => {
+    const handleCurriculumUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/curriculum"] });
+      toast({
+        title: "Curriculum Updated",
+        description: "Another user updated the curriculum",
+      });
+    };
+
+    window.addEventListener("curriculum_updated", handleCurriculumUpdate);
+    return () => window.removeEventListener("curriculum_updated", handleCurriculumUpdate);
+  }, [toast]);
 
   const { mutate: regenerateWeek, isPending: isRegenerating } = useMutation({
     mutationFn: async (weekNumber: number) => {
@@ -132,9 +163,59 @@ export default function Dashboard() {
                 {familyData.city}, {familyData.state} • {familyData.country}
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Current Week</p>
-              <p className="text-2xl font-heading font-bold text-primary">{currentWeek.weekNumber}</p>
+            <div className="flex items-center gap-6">
+              {activeUsers.length > 0 && (
+                <div className="flex items-center gap-2" data-testid="presence-indicator">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-2 px-3 py-2 bg-card rounded-lg border border-card-border">
+                        <Users className="w-4 h-4 text-muted-foreground" />
+                        <div className="flex -space-x-2">
+                          {activeUsers.slice(0, 3).map((activeUser, idx) => {
+                            const initials = activeUser.userName
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .toUpperCase();
+                            return (
+                              <Avatar key={`${activeUser.userId}-${idx}`} className="w-7 h-7 border-2 border-background">
+                                <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                  {initials}
+                                </AvatarFallback>
+                              </Avatar>
+                            );
+                          })}
+                          {activeUsers.length > 3 && (
+                            <Avatar className="w-7 h-7 border-2 border-background">
+                              <AvatarFallback className="text-xs bg-muted text-muted-foreground">
+                                +{activeUsers.length - 3}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                        </div>
+                        {isConnected && (
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" data-testid="connection-indicator" />
+                        )}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="space-y-1">
+                        <p className="font-semibold text-sm">Active Users</p>
+                        {activeUsers.map((activeUser) => (
+                          <p key={activeUser.userId} className="text-sm">
+                            {activeUser.userName}
+                            {activeUser.weekNumber !== undefined && ` - Week ${activeUser.weekNumber}`}
+                          </p>
+                        ))}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Current Week</p>
+                <p className="text-2xl font-heading font-bold text-primary">{currentWeek.weekNumber}</p>
+              </div>
             </div>
           </div>
 
