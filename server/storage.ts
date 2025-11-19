@@ -234,11 +234,23 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getSubscription(familyId: string): Promise<Subscription | null> {
-    const [result] = await db
+  async getSubscription(familyId: string): Promise<Subscription | null>;
+  async getSubscription(customerId: string): Promise<Subscription | null>;
+  async getSubscription(idOrCustomer: string): Promise<Subscription | null> {
+    // Try familyId first
+    let [result] = await db
       .select()
       .from(subscriptions)
-      .where(eq(subscriptions.familyId, familyId));
+      .where(eq(subscriptions.familyId, idOrCustomer));
+    
+    // If not found, try stripeCustomerId
+    if (!result) {
+      [result] = await db
+        .select()
+        .from(subscriptions)
+        .where(eq(subscriptions.stripeCustomerId, idOrCustomer));
+    }
+    
     return result || null;
   }
 

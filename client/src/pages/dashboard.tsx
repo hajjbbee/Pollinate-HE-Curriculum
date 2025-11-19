@@ -12,9 +12,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Sparkles, RefreshCw, Calendar, TrendingUp, MapPin, BookOpen, ExternalLink, Users } from "lucide-react";
+import { Sparkles, RefreshCw, Calendar, TrendingUp, MapPin, BookOpen, ExternalLink, Users, Zap } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { CurriculumData, WeekCurriculum } from "@shared/schema";
+import { Link } from "wouter";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -49,6 +50,14 @@ export default function Dashboard() {
   } = useQuery({
     queryKey: ["/api/curriculum"],
     retry: false,
+    enabled: !!user,
+  });
+
+  const { data: subscription } = useQuery<{
+    plan: string;
+    status: string;
+  }>({
+    queryKey: ["/api/billing/subscription"],
     enabled: !!user,
   });
 
@@ -163,7 +172,15 @@ export default function Dashboard() {
                 {familyData.city}, {familyData.state} • {familyData.country}
               </p>
             </div>
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
+              {subscription?.plan === "basic" && subscription?.status === "active" && (
+                <Link href="/pricing">
+                  <Button variant="outline" size="sm" className="gap-2" data-testid="button-upgrade">
+                    <Zap className="w-4 h-4" />
+                    Upgrade to Pro
+                  </Button>
+                </Link>
+              )}
               {activeUsers.length > 0 && (
                 <div className="flex items-center gap-2" data-testid="presence-indicator">
                   <Tooltip>

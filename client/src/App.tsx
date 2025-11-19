@@ -14,6 +14,7 @@ import Dashboard from "@/pages/dashboard";
 import Journal from "@/pages/journal";
 import Opportunities from "@/pages/opportunities";
 import Settings from "@/pages/settings";
+import Pricing from "@/pages/pricing";
 import NotFound from "@/pages/not-found";
 
 function AppSidebar() {
@@ -108,6 +109,7 @@ function AuthenticatedRouter() {
       <Route path="/journal" component={Journal} />
       <Route path="/opportunities" component={Opportunities} />
       <Route path="/settings" component={Settings} />
+      <Route path="/pricing" component={Pricing} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -118,6 +120,7 @@ function PublicRouter() {
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/onboarding" component={Onboarding} />
+      <Route path="/pricing" component={Pricing} />
       <Route component={NotFound} />
     </Switch>
   );
