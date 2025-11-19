@@ -114,11 +114,10 @@ export function PlacesAutocomplete({
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
+        placeholder={placeholder || "Enter your full address"}
         className={className}
         data-testid={dataTestId}
-        disabled
-        title="Google Maps API failed to load. Please check your internet connection or API key."
+        title="Autocomplete unavailable - please enter your complete address manually"
       />
     );
   }
