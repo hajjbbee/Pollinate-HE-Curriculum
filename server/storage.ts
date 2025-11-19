@@ -9,6 +9,8 @@ import type {
   JournalEntry,
   InsertLocalOpportunity,
   LocalOpportunity,
+  InsertSubscription,
+  Subscription,
   User,
   UpsertUser,
 } from "@shared/schema";
@@ -47,6 +49,11 @@ export interface IStorage {
   createOpportunity(opportunity: InsertLocalOpportunity): Promise<LocalOpportunity>;
   getOpportunities(familyId: string): Promise<LocalOpportunity[]>;
   deleteOpportunitiesByFamily(familyId: string): Promise<void>;
+
+  // Subscriptions
+  upsertSubscription(subscription: InsertSubscription): Promise<Subscription>;
+  getSubscription(familyId: string): Promise<Subscription | null>;
+  updateSubscription(familyId: string, updates: Partial<InsertSubscription>): Promise<Subscription>;
 }
 
 import { db } from "./db";
@@ -57,6 +64,7 @@ import {
   curricula,
   journalEntries,
   localOpportunities,
+  subscriptions,
 } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 
@@ -211,6 +219,36 @@ export class DatabaseStorage implements IStorage {
 
   async deleteOpportunitiesByFamily(familyId: string): Promise<void> {
     await db.delete(localOpportunities).where(eq(localOpportunities.familyId, familyId));
+  }
+
+  // Subscriptions
+  async upsertSubscription(subscriptionData: InsertSubscription): Promise<Subscription> {
+    const [result] = await db
+      .insert(subscriptions)
+      .values(subscriptionData)
+      .onConflictDoUpdate({
+        target: subscriptions.familyId,
+        set: { ...subscriptionData, updatedAt: new Date() },
+      })
+      .returning();
+    return result;
+  }
+
+  async getSubscription(familyId: string): Promise<Subscription | null> {
+    const [result] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.familyId, familyId));
+    return result || null;
+  }
+
+  async updateSubscription(familyId: string, updates: Partial<InsertSubscription>): Promise<Subscription> {
+    const [result] = await db
+      .update(subscriptions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(subscriptions.familyId, familyId))
+      .returning();
+    return result;
   }
 }
 

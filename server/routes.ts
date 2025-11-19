@@ -585,6 +585,212 @@ router.get("/objects/:objectPath(*)", isAuthenticated, async (req: any, res: Res
   }
 });
 
+// Stripe Billing Routes
+import { stripe, STRIPE_PRICE_IDS } from "./stripe";
+
+router.post("/api/billing/create-checkout-session", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { priceId } = req.body;
+    
+    if (!priceId || !Object.values(STRIPE_PRICE_IDS).includes(priceId)) {
+      return res.status(400).json({ error: "Invalid price ID" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    // Get or create subscription record
+    let subscription = await storage.getSubscription(family.id);
+    let stripeCustomerId: string;
+
+    if (subscription?.stripeCustomerId) {
+      stripeCustomerId = subscription.stripeCustomerId;
+    } else {
+      // Create Stripe customer
+      const user = await storage.getUser(req.user.id);
+      const customer = await stripe.customers.create({
+        email: user?.email || undefined,
+        metadata: {
+          familyId: family.id,
+          userId: req.user.id,
+        },
+      });
+      stripeCustomerId = customer.id;
+
+      // Save customer ID
+      await storage.upsertSubscription({
+        familyId: family.id,
+        stripeCustomerId,
+        status: "inactive",
+        plan: "basic",
+      });
+    }
+
+    // Create checkout session
+    const session = await stripe.checkout.sessions.create({
+      customer: stripeCustomerId,
+      mode: "subscription",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      success_url: `${process.env.REPL_ID ? `https://${process.env.REPL_ID}.${process.env.REPLIT_DOMAINS}` : 'http://localhost:5000'}/dashboard?success=true`,
+      cancel_url: `${process.env.REPL_ID ? `https://${process.env.REPL_ID}.${process.env.REPLIT_DOMAINS}` : 'http://localhost:5000'}/pricing?canceled=true`,
+      metadata: {
+        familyId: family.id,
+      },
+    });
+
+    res.json({ url: session.url });
+  } catch (error: any) {
+    console.error("Checkout session error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/api/billing/create-portal-session", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const subscription = await storage.getSubscription(family.id);
+    if (!subscription?.stripeCustomerId) {
+      return res.status(400).json({ error: "No subscription found" });
+    }
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: subscription.stripeCustomerId,
+      return_url: `${process.env.REPL_ID ? `https://${process.env.REPL_ID}.${process.env.REPLIT_DOMAINS}` : 'http://localhost:5000'}/dashboard`,
+    });
+
+    res.json({ url: session.url });
+  } catch (error: any) {
+    console.error("Portal session error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/api/billing/subscription", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const subscription = await storage.getSubscription(family.id);
+    if (!subscription) {
+      return res.json({ status: "inactive", plan: "basic" });
+    }
+
+    res.json(subscription);
+  } catch (error: any) {
+    console.error("Get subscription error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/api/billing/webhook", async (req: Request, res: Response) => {
+  const sig = req.headers["stripe-signature"];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!sig || !webhookSecret) {
+    return res.status(400).send("Webhook signature missing");
+  }
+
+  try {
+    const event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      webhookSecret
+    );
+
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as any;
+        const familyId = session.metadata.familyId;
+        
+        if (session.mode === "subscription") {
+          const subscriptionId = session.subscription;
+          const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const priceId = stripeSubscription.items.data[0].price.id;
+          
+          const plan = priceId === STRIPE_PRICE_IDS.pro ? "pro" : "basic";
+
+          await storage.upsertSubscription({
+            familyId,
+            stripeCustomerId: session.customer,
+            stripeSubscriptionId: subscriptionId,
+            stripePriceId: priceId,
+            status: "active",
+            plan,
+            currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
+            cancelAtPeriodEnd: false,
+          });
+        }
+        break;
+      }
+
+      case "customer.subscription.updated": {
+        const subscription = event.data.object as any;
+        const familyId = subscription.metadata.familyId || 
+          (await storage.getSubscription(subscription.customer))?.familyId;
+
+        if (familyId) {
+          const priceId = subscription.items.data[0].price.id;
+          const plan = priceId === STRIPE_PRICE_IDS.pro ? "pro" : "basic";
+
+          await storage.updateSubscription(familyId, {
+            stripeSubscriptionId: subscription.id,
+            stripePriceId: priceId,
+            status: subscription.status,
+            plan,
+            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          });
+        }
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as any;
+        const familyId = subscription.metadata.familyId || 
+          (await storage.getSubscription(subscription.customer))?.familyId;
+
+        if (familyId) {
+          await storage.updateSubscription(familyId, {
+            status: "canceled",
+          });
+        }
+        break;
+      }
+    }
+
+    res.json({ received: true });
+  } catch (error: any) {
+    console.error("Webhook error:", error);
+    return res.status(400).send(`Webhook Error: ${error.message}`);
+  }
+});
+
 // Global collaboration service instance for route access
 let collaborationService: CollaborationService | null = null;
 
@@ -612,11 +818,11 @@ export async function registerRoutes(app: Express) {
       if (!userId) return null;
 
       // Get the user's family
-      const family = await storage.getFamilyByUserId(userId);
+      const family = await storage.getFamily(userId);
       if (!family) return null;
 
       // Get user details from storage or session
-      const user = await storage.getUserById(userId);
+      const user = await storage.getUser(userId);
       const userName = user 
         ? `${user.firstName} ${user.lastName}`.trim() 
         : sessionUser.claims.email?.split('@')[0] || "User";

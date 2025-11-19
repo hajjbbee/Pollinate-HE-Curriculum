@@ -106,6 +106,21 @@ export const localOpportunities = pgTable("local_opportunities", {
   cachedAt: timestamp("cached_at").defaultNow(),
 });
 
+// Subscriptions table
+export const subscriptions = pgTable("subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  familyId: varchar("family_id").notNull().unique().references(() => families.id, { onDelete: "cascade" }),
+  stripeCustomerId: varchar("stripe_customer_id").notNull(),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  stripePriceId: varchar("stripe_price_id"),
+  status: varchar("status").notNull().default("inactive"), // active, inactive, canceled, past_due
+  plan: varchar("plan").notNull().default("basic"), // basic, pro
+  currentPeriodEnd: timestamp("current_period_end"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one }) => ({
   family: one(families, {
@@ -123,6 +138,10 @@ export const familiesRelations = relations(families, ({ one, many }) => ({
   curricula: many(curricula),
   journalEntries: many(journalEntries),
   localOpportunities: many(localOpportunities),
+  subscription: one(subscriptions, {
+    fields: [families.id],
+    references: [subscriptions.familyId],
+  }),
 }));
 
 export const childrenRelations = relations(children, ({ one, many }) => ({
@@ -158,6 +177,13 @@ export const localOpportunitiesRelations = relations(localOpportunities, ({ one 
   }),
 }));
 
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  family: one(families, {
+    fields: [subscriptions.familyId],
+    references: [families.id],
+  }),
+}));
+
 // Insert schemas
 export const insertFamilySchema = createInsertSchema(families).omit({
   id: true,
@@ -187,6 +213,12 @@ export const insertLocalOpportunitySchema = createInsertSchema(localOpportunitie
   cachedAt: true,
 });
 
+export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -205,6 +237,9 @@ export type JournalEntry = typeof journalEntries.$inferSelect;
 
 export type InsertLocalOpportunity = z.infer<typeof insertLocalOpportunitySchema>;
 export type LocalOpportunity = typeof localOpportunities.$inferSelect;
+
+export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+export type Subscription = typeof subscriptions.$inferSelect;
 
 // Curriculum JSON structure types
 export interface WeekActivity {
