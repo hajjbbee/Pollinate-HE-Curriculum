@@ -569,7 +569,28 @@ router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Re
       return res.status(404).json({ error: "Family not found" });
     }
 
-    const { familyName, country, address, lat, lng, travelRadiusMinutes, flexForHighInterest, children } = req.body;
+    // Validate request body
+    const settingsSchema = z.object({
+      familyName: z.string().min(1),
+      country: z.string(),
+      address: z.string(),
+      lat: z.number().optional(),
+      lng: z.number().optional(),
+      travelRadiusMinutes: z.number().min(5).max(120),
+      flexForHighInterest: z.boolean(),
+      children: z.array(
+        z.object({
+          id: z.string().optional(),
+          name: z.string().min(1),
+          birthdate: z.string(),
+          interests: z.array(z.string()),
+          learningStyle: z.string().nullable(),
+        })
+      ).min(1),
+    });
+
+    const validatedData = settingsSchema.parse(req.body);
+    const { familyName, country, address, lat, lng, travelRadiusMinutes, flexForHighInterest, children } = validatedData;
 
     // Geocode address if lat/lng not provided
     let coordinates = { lat, lng };
@@ -589,20 +610,40 @@ router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Re
       flexForHighInterest,
     });
 
-    // Update children - delete existing and create new ones
+    // Update children - diff against existing to preserve IDs
     const existingChildren = await storage.getChildren(family.id);
-    for (const child of existingChildren) {
-      await storage.deleteChild(child.id);
+    const existingChildIds = new Set(existingChildren.map(c => c.id));
+    const keptChildIds = new Set<string>();
+
+    // Update existing children and create new ones
+    for (const childData of children) {
+      if (childData.id && existingChildIds.has(childData.id)) {
+        // Update existing child
+        await storage.updateChild(childData.id, {
+          name: childData.name,
+          birthdate: childData.birthdate,
+          interests: childData.interests,
+          learningStyle: childData.learningStyle || null,
+        });
+        keptChildIds.add(childData.id);
+      } else {
+        // Create new child (no ID or ID not found)
+        const newChild = await storage.createChild({
+          familyId: family.id,
+          name: childData.name,
+          birthdate: childData.birthdate,
+          interests: childData.interests,
+          learningStyle: childData.learningStyle || null,
+        });
+        keptChildIds.add(newChild.id);
+      }
     }
 
-    for (const childData of children) {
-      await storage.createChild({
-        familyId: family.id,
-        name: childData.name,
-        birthdate: childData.birthdate,
-        interests: childData.interests,
-        learningStyle: childData.learningStyle || null,
-      });
+    // Delete children that were removed (not in keptChildIds)
+    for (const existingChild of existingChildren) {
+      if (!keptChildIds.has(existingChild.id)) {
+        await storage.deleteChild(existingChild.id);
+      }
     }
 
     // Clear local opportunities cache so they'll be regenerated with new location

@@ -136,13 +136,13 @@ export default function FamilySettings() {
             description: "Your 12-week curriculum has been updated with your new family settings.",
           });
           navigate("/");
-        } catch (error) {
+        } catch (error: any) {
           setIsRegenerating(false);
           toast({
-            title: "Regeneration started",
-            description: "Your curriculum is being generated. Please check back in a moment.",
+            title: "Curriculum regeneration failed",
+            description: error.message || "There was an error regenerating your curriculum. Your settings were saved, but please try regenerating from the dashboard.",
+            variant: "destructive",
           });
-          navigate("/");
         }
       }, 1000);
     },
