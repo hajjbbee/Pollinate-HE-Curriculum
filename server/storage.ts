@@ -13,6 +13,8 @@ import type {
   Subscription,
   InsertUpcomingEvent,
   UpcomingEvent,
+  InsertHomeschoolGroup,
+  HomeschoolGroup,
   User,
   UpsertUser,
 } from "@shared/schema";
@@ -99,6 +101,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    // Check if user exists by email first (Replit OIDC may change sub but keep email)
+    const existingUser = await db.query.users.findFirst({
+      where: (usersTable, { eq: eqFn }) => eqFn(usersTable.email, userData.email),
+    });
+
+    if (existingUser) {
+      // Update existing user with new data from OIDC
+      const [user] = await db
+        .update(users)
+        .set({
+          ...userData,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.email, userData.email))
+        .returning();
+      return user;
+    }
+
+    // Insert new user if doesn't exist
     const [user] = await db
       .insert(users)
       .values(userData)

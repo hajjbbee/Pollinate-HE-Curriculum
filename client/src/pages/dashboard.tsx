@@ -62,7 +62,7 @@ export default function Dashboard() {
     error: eventsError,
   } = useQuery<UpcomingEvent[]>({
     queryKey: ["/api/events/week", currentWeekIndex + 1],
-    enabled: !!user && !!familyData && !!curriculumResponse,
+    enabled: !!user && !!familyData,
     retry: 1,
   });
 
@@ -146,19 +146,129 @@ export default function Dashboard() {
     );
   }
 
-  if (!familyData || !curriculumResponse) {
+  if (!familyData) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
         <Sparkles className="w-12 h-12 text-primary mx-auto mb-4" />
-        <h2 className="text-2xl font-heading font-bold mb-2">No Curriculum Yet</h2>
+        <h2 className="text-2xl font-heading font-bold mb-2">Welcome to Pollinate</h2>
         <p className="text-muted-foreground mb-6">
-          Complete onboarding to generate your personalized curriculum
+          Complete onboarding to get started
         </p>
         <Link href="/onboarding">
           <Button size="lg" data-testid="button-start-onboarding">
             Start Onboarding
           </Button>
         </Link>
+      </div>
+    );
+  }
+
+  if (!curriculumResponse) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center py-16">
+          <Sparkles className="w-12 h-12 text-primary mx-auto mb-4" />
+          <h2 className="text-2xl font-heading font-bold mb-2">No Curriculum Yet</h2>
+          <p className="text-muted-foreground mb-6">
+            Complete onboarding to generate your personalized curriculum
+          </p>
+          <Link href="/onboarding">
+            <Button size="lg" data-testid="button-start-onboarding">
+              Start Onboarding
+            </Button>
+          </Link>
+        </div>
+
+        {weeklyEvents.filter((e: UpcomingEvent) => e.source === "facebook_group").length > 0 && (
+          <Card className="mt-6">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded bg-[#1877F2] flex items-center justify-center">
+                  <SiFacebook className="w-3 h-3 text-white" />
+                </div>
+                <CardTitle className="font-heading">From Your Groups</CardTitle>
+              </div>
+              <CardDescription>
+                Events you've added from your homeschool Facebook groups
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-4">
+                {weeklyEvents
+                  .filter((e: UpcomingEvent) => e.source === "facebook_group")
+                  .slice(0, 8)
+                  .map((event, idx) => (
+                    <Card key={event.id} className="hover-elevate active-elevate-2 border-[#1877F2]/10">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="shrink-0 w-10 h-10 rounded-lg bg-[#1877F2]/10 flex items-center justify-center">
+                            <SiFacebook className="w-5 h-5 text-[#1877F2]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-heading font-semibold text-sm mb-1 pr-2">{event.eventName}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(event.eventDate), "EEE, MMM d 'at' h:mm a")}
+                            </p>
+                            {event.groupName && (
+                              <p className="text-xs text-[#1877F2] mt-0.5 truncate">
+                                {event.groupName}
+                              </p>
+                            )}
+                          </div>
+                          {event.cost === "FREE" && (
+                            <Badge variant="default" className="bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20 shrink-0">
+                              FREE
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        <div className="space-y-1.5 mb-3">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <MapPin className="w-3 h-3 shrink-0 text-[#1877F2]/60" />
+                            <span className="truncate">{event.location}</span>
+                          </div>
+                          {event.cost !== "FREE" && (
+                            <div className="flex items-center gap-2 text-xs">
+                              <DollarSign className="w-3 h-3 shrink-0 text-[#1877F2]/60" />
+                              <span className="font-semibold text-[#1877F2]">{event.cost}</span>
+                            </div>
+                          )}
+                          {event.ageRange && (
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                Ages {event.ageRange}
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+
+                        {event.description && (
+                          <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                            {event.description}
+                          </p>
+                        )}
+
+                        {event.whyItFits && (
+                          <p className="text-xs text-muted-foreground mb-3 italic border-l-2 border-[#1877F2]/30 pl-2.5 py-0.5">
+                            {event.whyItFits}
+                          </p>
+                        )}
+
+                        {event.ticketUrl && (
+                          <Button variant="outline" size="sm" className="w-full hover-elevate" asChild>
+                            <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer" data-testid={`link-group-event-${idx}`}>
+                              <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                              Learn More
+                            </a>
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }

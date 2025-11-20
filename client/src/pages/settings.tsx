@@ -52,7 +52,7 @@ export default function Settings() {
 
   const addGroupMutation = useMutation({
     mutationFn: async ({ groupUrl, groupName }: { groupUrl: string; groupName: string }) => {
-      return await apiRequest("/api/groups", "POST", { groupUrl, groupName });
+      return await apiRequest("POST", "/api/groups", { groupUrl, groupName });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
@@ -74,7 +74,7 @@ export default function Settings() {
 
   const deleteGroupMutation = useMutation({
     mutationFn: async (groupId: string) => {
-      return await apiRequest(`/api/groups/${groupId}`, "DELETE");
+      return await apiRequest("DELETE", `/api/groups/${groupId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
@@ -94,7 +94,7 @@ export default function Settings() {
 
   const addEventMutation = useMutation({
     mutationFn: async ({ groupId, eventData }: { groupId: string; eventData: any }) => {
-      return await apiRequest(`/api/groups/${groupId}/events`, "POST", eventData);
+      return await apiRequest("POST", `/api/groups/${groupId}/events`, eventData);
     },
     onSuccess: (_, { groupId }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/events/week"] });
