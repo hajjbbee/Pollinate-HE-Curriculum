@@ -5,9 +5,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Download, Award, BookOpen, Calendar } from "lucide-react";
+import { Download, Award, BookOpen, Calendar, Sparkles } from "lucide-react";
 import type { WeekCurriculum, CurriculumData } from "@shared/schema";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import jsPDF from "jspdf";
 
 interface MasteryRingProps {
@@ -78,7 +78,12 @@ export default function ProgressPage() {
     enabled: !!user,
   });
 
-  const isLoading = !curriculumResponse || !childrenData || !journalData;
+  const { data: emergingInterestsData } = useQuery<any[]>({
+    queryKey: ["/api/emerging-interests"],
+    enabled: !!user,
+  });
+
+  const isLoading = !curriculumResponse || !childrenData || !journalData || emergingInterestsData === undefined;
 
   if (isLoading) {
     return (
@@ -92,6 +97,7 @@ export default function ProgressPage() {
   const curriculumData = (curriculumResponse as any).curriculum?.curriculumData as CurriculumData | undefined;
   const children = childrenData || [];
   const journalEntries = journalData || [];
+  const emergingInterests = emergingInterestsData || [];
 
   if (!curriculumData || children.length === 0) {
     return (
@@ -286,6 +292,7 @@ export default function ProgressPage() {
           const mastery = calculateMastery(child.id);
           const deepDives = getDeepDivesTimeline(child.id);
           const childJournalEntries = journalEntries.filter(e => e.childId === child.id);
+          const childEmergingInterests = emergingInterests.filter(i => i.childId === child.id);
 
           return (
             <div key={child.id} className="space-y-4">
@@ -403,6 +410,72 @@ export default function ProgressPage() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Emerging Interests */}
+              {childEmergingInterests.length > 0 && (
+                <Card className="border-2 border-primary/30" data-testid={`card-emerging-interests-${child.id}`}>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-primary" />
+                      <CardTitle className="font-heading">Emerging Interests</CardTitle>
+                    </div>
+                    <CardDescription>
+                      Spontaneous obsessions and natural curiosities
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3" data-testid={`emerging-interests-list-${child.id}`}>
+                      {childEmergingInterests
+                        .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())
+                        .map((interest, idx) => (
+                          <div 
+                            key={interest.id} 
+                            className="border border-border rounded-lg p-4 space-y-2 bg-card/50 hover-elevate"
+                            data-testid={`emerging-interest-${child.id}-${idx}`}
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 space-y-1">
+                                <h4 className="font-semibold text-base" data-testid={`text-interest-title-${child.id}-${idx}`}>
+                                  {interest.title}
+                                </h4>
+                                {interest.description && (
+                                  <p className="text-sm text-muted-foreground" data-testid={`text-interest-description-${child.id}-${idx}`}>
+                                    {interest.description}
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                                  <Calendar className="w-3 h-3" />
+                                  <span data-testid={`text-interest-date-${child.id}-${idx}`}>
+                                    {formatDistanceToNow(new Date(interest.capturedAt), { addSuffix: true })}
+                                  </span>
+                                </div>
+                              </div>
+                              {interest.photoUrl && (
+                                <div 
+                                  className="w-16 h-16 rounded bg-muted border border-border overflow-hidden flex-shrink-0"
+                                  data-testid={`img-interest-photo-${child.id}-${idx}`}
+                                >
+                                  <img
+                                    src={interest.photoUrl}
+                                    alt={interest.title}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            {interest.aiFollowUpQuestion && (
+                              <div className="mt-3 p-3 bg-primary/5 border border-primary/20 rounded-md">
+                                <p className="text-sm text-foreground italic" data-testid={`text-interest-followup-${child.id}-${idx}`}>
+                                  💭 {interest.aiFollowUpQuestion}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           );
         })}
