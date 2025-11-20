@@ -12,7 +12,17 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-**November 20, 2025** - Production-Ready Enhancements & Real-Time Events
+**November 20, 2025** - Production-Ready Enhancements, Real-Time Events & Homeschool Groups
+- **My Homeschool Groups Feature**: Manual Facebook group event integration (COMPLETE)
+  - **Settings Management**: Add/remove Facebook groups by URL and name
+  - **Manual Event Entry**: Collapsible forms to add events from each group
+  - **Dashboard Integration**: "From Your Groups" section with Facebook icon branding
+  - **Event Separation**: Local API events vs. manually-entered group events displayed separately
+  - **Data Model**: `homeschoolGroups` table with group URL, name, and sync status
+  - **Event Linkage**: Events tagged with `groupId` and `groupName` for attribution
+  - **MVP Approach**: Manual entry avoids Facebook ToS violations and technical fragility
+  - **Future Consideration**: Explore compliant solutions (Graph API, browser extension) for Pro tier
+
 - **Resource List Feature**: Curated learning resources for each week (COMPLETE)
   - 9-12 resources per week across three categories: FREE, LOW-COST (<$15), RECYCLED/HOUSEHOLD
   - FREE resources: YouTube, Khan Academy, BBC Bitesize, Librivox, library books, printables
@@ -159,7 +169,8 @@ Preferred communication style: Simple, everyday language.
 - Curricula (12-week rolling plans with JSON data structure)
 - Journal Entries (daily logs per child with rich text and photos)
 - Local Opportunities (geocoded educational venues and activities)
-- Upcoming Events (real-time events from Eventbrite, Meetup, Google Places with theme matching)
+- Upcoming Events (real-time events from Eventbrite, Meetup, Google Places with theme matching, plus manually-entered Facebook group events)
+- Homeschool Groups (Facebook groups for manual event discovery and entry)
 
 **AI Integration**: Anthropic Claude API for curriculum generation
 - System prompt enforces hybrid educational methodology
