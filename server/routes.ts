@@ -378,7 +378,7 @@ Return JSON in this EXACT structure (no markdown, no code blocks):
 
   const completion = await openai.chat.completions.create({
     model: "anthropic/claude-3.5-sonnet",
-    max_tokens: 1600,
+    max_tokens: 1100,
     temperature: 0.7,
     messages: [
       {
@@ -738,7 +738,28 @@ router.post("/api/curriculum/regenerate", isAuthenticated, async (req: Request, 
     res.json(newCurriculum);
   } catch (error: any) {
     console.error("Regenerate error:", error);
-    res.status(500).json({ error: error.message });
+    
+    // Check for OpenRouter credit exhaustion (402 Payment Required)
+    if (error.status === 402 || error.message?.includes("credit") || error.message?.includes("max_tokens")) {
+      return res.status(402).json({ 
+        message: "Curriculum generation requires additional OpenRouter credits. Please contact support or add credits at openrouter.ai",
+        code: "INSUFFICIENT_CREDITS"
+      });
+    }
+    
+    // Check for other API authentication issues
+    if (error.status === 401 || error.message?.includes("API key")) {
+      return res.status(502).json({ 
+        message: "AI service configuration error. Please contact support.",
+        code: "API_CONFIG_ERROR"
+      });
+    }
+    
+    // Generic error for other cases
+    res.status(502).json({ 
+      message: error.message || "Failed to generate curriculum",
+      code: "GENERATION_ERROR"
+    });
   }
 });
 

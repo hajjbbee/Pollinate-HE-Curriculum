@@ -116,35 +116,46 @@ export default function FamilySettings() {
         })),
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["/api/family"] });
       queryClient.invalidateQueries({ queryKey: ["/api/children"] });
       
-      setIsRegenerating(true);
       toast({
         title: "Settings updated!",
         description: "Your curriculum is being refreshed with the new details...",
       });
-
-      setTimeout(async () => {
-        try {
-          await apiRequest("POST", "/api/curriculum/regenerate", {});
-          queryClient.invalidateQueries({ queryKey: ["/api/curriculum"] });
-          setIsRegenerating(false);
+      
+      setIsRegenerating(true);
+      
+      try {
+        await apiRequest("POST", "/api/curriculum/regenerate", {});
+        queryClient.invalidateQueries({ queryKey: ["/api/curriculum"] });
+        setIsRegenerating(false);
+        toast({
+          title: "Curriculum regenerated!",
+          description: "Your 12-week curriculum has been updated with your new family settings.",
+        });
+        navigate("/");
+      } catch (error: any) {
+        setIsRegenerating(false);
+        
+        // Check for specific error codes
+        const errorData = error.response?.data || error;
+        
+        if (errorData.code === "INSUFFICIENT_CREDITS") {
           toast({
-            title: "Curriculum regenerated!",
-            description: "Your 12-week curriculum has been updated with your new family settings.",
+            title: "Insufficient AI credits",
+            description: "Your settings were saved successfully, but curriculum regeneration requires additional OpenRouter credits. Please contact support or try again later.",
+            variant: "destructive",
           });
-          navigate("/");
-        } catch (error: any) {
-          setIsRegenerating(false);
+        } else {
           toast({
             title: "Curriculum regeneration failed",
-            description: error.message || "There was an error regenerating your curriculum. Your settings were saved, but please try regenerating from the dashboard.",
+            description: errorData.message || error.message || "Your settings were saved, but there was an error regenerating your curriculum. You can try regenerating from the dashboard.",
             variant: "destructive",
           });
         }
-      }, 1000);
+      }
     },
     onError: (error: any) => {
       toast({
