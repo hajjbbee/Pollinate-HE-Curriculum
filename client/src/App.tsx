@@ -14,6 +14,7 @@ import Dashboard from "@/pages/dashboard";
 import Journal from "@/pages/journal";
 import Opportunities from "@/pages/opportunities";
 import Settings from "@/pages/settings";
+import FamilySettings from "@/pages/family-settings";
 import Pricing from "@/pages/pricing";
 import NotFound from "@/pages/not-found";
 
@@ -112,6 +113,7 @@ function AuthenticatedRouter() {
       <Route path="/journal" component={Journal} />
       <Route path="/opportunities" component={Opportunities} />
       <Route path="/settings" component={Settings} />
+      <Route path="/family-settings" component={FamilySettings} />
       <Route path="/pricing" component={Pricing} />
       <Route component={NotFound} />
     </Switch>

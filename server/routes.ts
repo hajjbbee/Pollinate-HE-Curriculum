@@ -557,6 +557,64 @@ router.get("/api/family", isAuthenticated, async (req: Request, res: Response) =
   }
 });
 
+// Update family settings
+router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const { familyName, country, address, lat, lng, travelRadiusMinutes, flexForHighInterest, children } = req.body;
+
+    // Geocode address if lat/lng not provided
+    let coordinates = { lat, lng };
+    if (!lat || !lng) {
+      console.log("Geocoding address:", address);
+      coordinates = await geocodeAddress(address, country);
+    }
+
+    // Update family data
+    await storage.updateFamily(req.user.id, {
+      familyName,
+      country,
+      address,
+      latitude: coordinates.lat,
+      longitude: coordinates.lng,
+      travelRadiusMinutes,
+      flexForHighInterest,
+    });
+
+    // Update children - delete existing and create new ones
+    const existingChildren = await storage.getChildren(family.id);
+    for (const child of existingChildren) {
+      await storage.deleteChild(child.id);
+    }
+
+    for (const childData of children) {
+      await storage.createChild({
+        familyId: family.id,
+        name: childData.name,
+        birthdate: childData.birthdate,
+        interests: childData.interests,
+        learningStyle: childData.learningStyle || null,
+      });
+    }
+
+    // Clear local opportunities cache so they'll be regenerated with new location
+    await storage.deleteOpportunitiesByFamily(family.id);
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Update family settings error:", error);
+    res.status(500).json({ error: error.message || "Failed to update family settings" });
+  }
+});
+
 // Get children
 router.get("/api/children", isAuthenticated, async (req: Request, res: Response) => {
   try {
