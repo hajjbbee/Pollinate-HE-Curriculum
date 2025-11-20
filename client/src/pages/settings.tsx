@@ -1,13 +1,22 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Settings as SettingsIcon, LogOut, MapPin, Users, Calendar } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { Settings as SettingsIcon, LogOut, MapPin, Users, Calendar, Plus, Trash2 } from "lucide-react";
+import { SiFacebook } from "react-icons/si";
 
 export default function Settings() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [newGroupUrl, setNewGroupUrl] = useState("");
+  const [newGroupName, setNewGroupName] = useState("");
 
   const { data: familyData, isLoading: familyLoading } = useQuery({
     queryKey: ["/api/family"],
@@ -19,6 +28,54 @@ export default function Settings() {
     queryKey: ["/api/children"],
     retry: false,
     enabled: !!user,
+  });
+
+  const { data: groups, isLoading: groupsLoading } = useQuery({
+    queryKey: ["/api/groups"],
+    retry: false,
+    enabled: !!user,
+  });
+
+  const addGroupMutation = useMutation({
+    mutationFn: async ({ groupUrl, groupName }: { groupUrl: string; groupName: string }) => {
+      return await apiRequest("/api/groups", "POST", { groupUrl, groupName });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      setNewGroupUrl("");
+      setNewGroupName("");
+      toast({
+        title: "Group added",
+        description: "You can now manually add events from this group.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add group",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: async (groupId: string) => {
+      return await apiRequest(`/api/groups/${groupId}`, "DELETE");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      toast({
+        title: "Group removed",
+        description: "The group has been removed from your list.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove group",
+        variant: "destructive",
+      });
+    },
   });
 
   if (familyLoading || childrenLoading) {
@@ -176,6 +233,111 @@ export default function Settings() {
             </CardContent>
           </Card>
         )}
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded bg-[#1877F2] flex items-center justify-center">
+                <SiFacebook className="w-3 h-3 text-white" />
+              </div>
+              <CardTitle className="font-heading">My Homeschool Groups</CardTitle>
+            </div>
+            <CardDescription>
+              Manage Facebook groups where you find educational events. Add events manually from your groups to see them alongside your curriculum.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {!groupsLoading && groups && groups.length > 0 && (
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold">Your Groups</Label>
+                <div className="space-y-2">
+                  {groups.map((group: any) => (
+                    <div
+                      key={group.id}
+                      className="flex items-center justify-between gap-4 p-4 rounded-lg border border-border hover-elevate"
+                      data-testid={`group-card-${group.id}`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-10 h-10 rounded bg-[#1877F2]/10 flex items-center justify-center flex-shrink-0">
+                          <SiFacebook className="w-5 h-5 text-[#1877F2]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold truncate">{group.groupName}</p>
+                          <a
+                            href={group.groupUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline truncate block"
+                          >
+                            {group.groupUrl}
+                          </a>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteGroupMutation.mutate(group.id)}
+                        disabled={deleteGroupMutation.isPending}
+                        data-testid={`button-delete-group-${group.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <Label className="text-sm font-semibold">Add a New Group</Label>
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="group-url" className="text-sm">
+                    Facebook Group URL
+                  </Label>
+                  <Input
+                    id="group-url"
+                    placeholder="https://www.facebook.com/groups/yourgroup"
+                    value={newGroupUrl}
+                    onChange={(e) => setNewGroupUrl(e.target.value)}
+                    data-testid="input-group-url"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Example: https://www.facebook.com/groups/denverwildandfree
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="group-name" className="text-sm">
+                    Group Name
+                  </Label>
+                  <Input
+                    id="group-name"
+                    placeholder="Denver Wild and Free"
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    data-testid="input-group-name"
+                  />
+                </div>
+                <Button
+                  onClick={() => addGroupMutation.mutate({ groupUrl: newGroupUrl, groupName: newGroupName })}
+                  disabled={!newGroupUrl || !newGroupName || addGroupMutation.isPending}
+                  data-testid="button-add-group"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Group
+                </Button>
+              </div>
+            </div>
+
+            {groups && groups.length > 0 && (
+              <div className="pt-4 border-t border-border">
+                <p className="text-sm text-muted-foreground">
+                  💡 <strong>Tip:</strong> After adding a group, you can manually add events from it. Events will appear in your dashboard's "From Your Groups" section and match your curriculum themes.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

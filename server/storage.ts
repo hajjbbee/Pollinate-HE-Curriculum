@@ -57,7 +57,15 @@ export interface IStorage {
   getUpcomingEvents(familyId: string, startDate?: Date, endDate?: Date): Promise<UpcomingEvent[]>;
   deleteEvent(eventId: string): Promise<void>;
   deleteEventsByFamily(familyId: string): Promise<void>;
+  deleteEventsBySource(familyId: string, source: string): Promise<void>;
   deleteOldEvents(beforeDate: Date): Promise<void>;
+
+  // Homeschool Groups
+  createHomeschoolGroup(group: InsertHomeschoolGroup): Promise<HomeschoolGroup>;
+  getHomeschoolGroups(familyId: string): Promise<HomeschoolGroup[]>;
+  getHomeschoolGroupById(groupId: string): Promise<HomeschoolGroup | null>;
+  updateHomeschoolGroup(groupId: string, updates: Partial<InsertHomeschoolGroup>): Promise<HomeschoolGroup>;
+  deleteHomeschoolGroup(groupId: string): Promise<void>;
 
   // Subscriptions
   upsertSubscription(subscription: InsertSubscription): Promise<Subscription>;
@@ -66,6 +74,7 @@ export interface IStorage {
   getSubscriptionByCustomerId(stripeCustomerId: string): Promise<Subscription | null>;
   updateSubscription(familyId: string, updates: Partial<InsertSubscription>): Promise<Subscription>;
   updateSubscriptionByStripeId(stripeSubscriptionId: string, updates: Partial<InsertSubscription>): Promise<Subscription | null>;
+  updateFamilyEventsFetchedAt(familyId: string): Promise<void>;
 }
 
 import { db } from "./db";
@@ -78,6 +87,7 @@ import {
   localOpportunities,
   subscriptions,
   upcomingEvents,
+  homeschoolGroups,
 } from "@shared/schema";
 import { eq, and, desc, gte, lte } from "drizzle-orm";
 
@@ -269,8 +279,43 @@ export class DatabaseStorage implements IStorage {
     await db.delete(upcomingEvents).where(eq(upcomingEvents.familyId, familyId));
   }
 
+  async deleteEventsBySource(familyId: string, source: string): Promise<void> {
+    await db.delete(upcomingEvents).where(and(
+      eq(upcomingEvents.familyId, familyId),
+      eq(upcomingEvents.source, source)
+    ));
+  }
+
   async deleteOldEvents(beforeDate: Date): Promise<void> {
     await db.delete(upcomingEvents).where(lte(upcomingEvents.eventDate, beforeDate));
+  }
+
+  // Homeschool Groups
+  async createHomeschoolGroup(group: InsertHomeschoolGroup): Promise<HomeschoolGroup> {
+    const [result] = await db.insert(homeschoolGroups).values(group).returning();
+    return result;
+  }
+
+  async getHomeschoolGroups(familyId: string): Promise<HomeschoolGroup[]> {
+    return db.select().from(homeschoolGroups).where(eq(homeschoolGroups.familyId, familyId));
+  }
+
+  async getHomeschoolGroupById(groupId: string): Promise<HomeschoolGroup | null> {
+    const [result] = await db.select().from(homeschoolGroups).where(eq(homeschoolGroups.id, groupId));
+    return result || null;
+  }
+
+  async updateHomeschoolGroup(groupId: string, updates: Partial<InsertHomeschoolGroup>): Promise<HomeschoolGroup> {
+    const [result] = await db
+      .update(homeschoolGroups)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(homeschoolGroups.id, groupId))
+      .returning();
+    return result;
+  }
+
+  async deleteHomeschoolGroup(groupId: string): Promise<void> {
+    await db.delete(homeschoolGroups).where(eq(homeschoolGroups.id, groupId));
   }
 
   // Subscriptions
@@ -338,6 +383,13 @@ export class DatabaseStorage implements IStorage {
       .where(eq(subscriptions.stripeSubscriptionId, stripeSubscriptionId))
       .returning();
     return result || null;
+  }
+
+  async updateFamilyEventsFetchedAt(familyId: string): Promise<void> {
+    await db
+      .update(families)
+      .set({ lastEventsFetchedAt: new Date() })
+      .where(eq(families.id, familyId));
   }
 }
 

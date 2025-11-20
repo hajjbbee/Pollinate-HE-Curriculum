@@ -822,6 +822,137 @@ router.get("/api/events/week/:weekNumber", isAuthenticated, async (req: Request,
   }
 });
 
+// Homeschool Groups routes
+router.get("/api/groups", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const groups = await storage.getHomeschoolGroups(family.id);
+    res.json(groups);
+  } catch (error: any) {
+    console.error("Error fetching groups:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/api/groups", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const { groupUrl, groupName } = req.body;
+    
+    if (!groupUrl || !groupName) {
+      return res.status(400).json({ error: "groupUrl and groupName are required" });
+    }
+
+    // Extract group ID from URL (handles various Facebook group URL formats)
+    const extractGroupId = (url: string): string => {
+      // https://www.facebook.com/groups/denverwildandfree
+      // https://www.facebook.com/groups/123456789012345
+      // https://m.facebook.com/groups/groupname
+      const match = url.match(/groups\/([^/?]+)/);
+      return match ? match[1] : url;
+    };
+
+    const groupId = extractGroupId(groupUrl);
+
+    const group = await storage.createHomeschoolGroup({
+      familyId: family.id,
+      groupId,
+      groupName,
+      groupUrl,
+      syncStatus: "manual", // MVP: all groups are manually managed
+    });
+
+    res.json(group);
+  } catch (error: any) {
+    console.error("Error creating group:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/api/groups/:groupId", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const group = await storage.getHomeschoolGroupById(req.params.groupId);
+    if (!group || group.familyId !== family.id) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    await storage.deleteHomeschoolGroup(req.params.groupId);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Error deleting group:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/api/groups/:groupId/events", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const group = await storage.getHomeschoolGroupById(req.params.groupId);
+    if (!group || group.familyId !== family.id) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    const { eventName, eventDate, location, cost, description, ticketUrl } = req.body;
+    
+    if (!eventName || !eventDate || !location) {
+      return res.status(400).json({ error: "eventName, eventDate, and location are required" });
+    }
+
+    const event = await storage.createEvent({
+      familyId: family.id,
+      eventName,
+      eventDate: new Date(eventDate),
+      location,
+      cost: cost || "FREE",
+      category: "community", // Default category for group events
+      source: "facebook_group",
+      groupId: group.groupId,
+      groupName: group.groupName,
+      description,
+      ticketUrl,
+      whyItFits: null, // Will be set when matched to curriculum theme
+    });
+
+    res.json(event);
+  } catch (error: any) {
+    console.error("Error creating group event:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Object storage routes
 router.post("/api/objects/upload", isAuthenticated, async (req: Request, res: Response) => {
   const objectStorageService = new ObjectStorageService();
