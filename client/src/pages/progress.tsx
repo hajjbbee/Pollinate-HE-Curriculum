@@ -11,17 +11,20 @@ import { format } from "date-fns";
 import jsPDF from "jspdf";
 
 interface MasteryRingProps {
+  childId: string;
   subject: string;
   percentage: number;
   color: string;
 }
 
-function MasteryRing({ subject, percentage, color }: MasteryRingProps) {
+function MasteryRing({ childId, subject, percentage, color }: MasteryRingProps) {
   const circumference = 2 * Math.PI * 45;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
+  const subjectSlug = subject.toLowerCase().replace(/\s+/g, '-');
+  const testId = `mastery-${childId}-${subjectSlug}`;
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-2" data-testid={testId}>
       <div className="relative w-24 h-24">
         <svg className="w-24 h-24 transform -rotate-90">
           {/* Background circle */}
@@ -49,10 +52,10 @@ function MasteryRing({ subject, percentage, color }: MasteryRingProps) {
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-lg font-bold">{percentage}%</span>
+          <span className="text-lg font-bold" data-testid={`${testId}-percentage`}>{percentage}%</span>
         </div>
       </div>
-      <span className="text-sm font-medium text-center">{subject}</span>
+      <span className="text-sm font-medium text-center" data-testid={`${testId}-label`}>{subject}</span>
     </div>
   );
 }
@@ -93,10 +96,10 @@ export default function ProgressPage() {
   if (!curriculumData || children.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen px-4 pb-24">
-        <Card className="max-w-md w-full">
+        <Card className="max-w-md w-full" data-testid="card-no-progress">
           <CardHeader>
-            <CardTitle className="font-heading">No progress data yet</CardTitle>
-            <CardDescription>Complete onboarding to get started</CardDescription>
+            <CardTitle className="font-heading" data-testid="text-no-progress-title">No progress data yet</CardTitle>
+            <CardDescription data-testid="text-no-progress-description">Complete onboarding to get started</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -287,7 +290,7 @@ export default function ProgressPage() {
           return (
             <div key={child.id} className="space-y-4">
               {/* Child Header with Portrait */}
-              <Card>
+              <Card data-testid={`card-child-${child.id}`}>
                 <CardHeader>
                   <div className="flex items-center gap-4">
                     <Avatar className="w-16 h-16" data-testid={`avatar-child-${child.id}`}>
@@ -296,11 +299,11 @@ export default function ProgressPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <CardTitle className="font-heading text-xl">{child.name}</CardTitle>
-                      <CardDescription>Age {child.age}</CardDescription>
+                      <CardTitle className="font-heading text-xl" data-testid={`text-child-name-${child.id}`}>{child.name}</CardTitle>
+                      <CardDescription data-testid={`text-child-age-${child.id}`}>Age {child.age}</CardDescription>
                     </div>
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-primary">{childJournalEntries.length}</div>
+                      <div className="text-2xl font-bold text-primary" data-testid={`text-journal-count-${child.id}`}>{childJournalEntries.length}</div>
                       <div className="text-xs text-muted-foreground">Journal Entries</div>
                     </div>
                   </div>
@@ -308,7 +311,7 @@ export default function ProgressPage() {
               </Card>
 
               {/* Mastery Rings */}
-              <Card>
+              <Card data-testid={`card-mastery-${child.id}`}>
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Award className="w-5 h-5 text-primary" />
@@ -320,10 +323,11 @@ export default function ProgressPage() {
                 </CardHeader>
                 <CardContent>
                   {Object.keys(mastery).length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6" data-testid={`mastery-grid-${child.id}`}>
                       {Object.entries(mastery).map(([subject, percentage]) => (
                         <MasteryRing
                           key={subject}
+                          childId={child.id}
                           subject={subject}
                           percentage={percentage}
                           color={getMasteryColor(percentage)}
@@ -331,7 +335,7 @@ export default function ProgressPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground text-center py-8">
+                    <p className="text-sm text-muted-foreground text-center py-8" data-testid={`text-mastery-empty-${child.id}`}>
                       No mastery data yet - keep learning!
                     </p>
                   )}
@@ -339,7 +343,7 @@ export default function ProgressPage() {
               </Card>
 
               {/* Deep Dives Timeline */}
-              <Card>
+              <Card data-testid={`card-deep-dives-${child.id}`}>
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-5 h-5 text-primary" />
@@ -351,21 +355,21 @@ export default function ProgressPage() {
                 </CardHeader>
                 <CardContent>
                   {deepDives.length > 0 ? (
-                    <div className="space-y-4">
+                    <div className="space-y-4" data-testid={`deep-dives-list-${child.id}`}>
                       {deepDives.map((dive, idx) => (
                         <div 
                           key={idx} 
                           className="border-l-4 border-primary/30 pl-4 py-2 space-y-2"
-                          data-testid={`deep-dive-${idx}`}
+                          data-testid={`deep-dive-${child.id}-${idx}`}
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
-                              <h4 className="font-semibold text-sm">{dive.topic}</h4>
+                              <h4 className="font-semibold text-sm" data-testid={`text-dive-topic-${child.id}-${idx}`}>{dive.topic}</h4>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                                 <Calendar className="w-3 h-3" />
-                                <span>Week {dive.weekNumber}</span>
+                                <span data-testid={`text-dive-week-${child.id}-${idx}`}>Week {dive.weekNumber}</span>
                                 <span>•</span>
-                                <span>{dive.entries.length} journal entries</span>
+                                <span data-testid={`text-dive-entry-count-${child.id}-${idx}`}>{dive.entries.length} journal entries</span>
                               </div>
                             </div>
                             {dive.entries.some(e => e.photoUrls.length > 0) && (
@@ -377,7 +381,7 @@ export default function ProgressPage() {
                                     <div
                                       key={photoIdx}
                                       className="w-12 h-12 rounded bg-muted border border-border overflow-hidden"
-                                      data-testid={`photo-thumbnail-${photoIdx}`}
+                                      data-testid={`img-dive-photo-${child.id}-${idx}-${photoIdx}`}
                                     >
                                       <img
                                         src={entry.photoUrls[0]}
@@ -393,7 +397,7 @@ export default function ProgressPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground text-center py-8">
+                    <p className="text-sm text-muted-foreground text-center py-8" data-testid={`text-deep-dives-empty-${child.id}`}>
                       No deep dives documented yet. Start journaling to build your portfolio!
                     </p>
                   )}
