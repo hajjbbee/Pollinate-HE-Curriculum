@@ -791,6 +791,125 @@ router.post("/api/journal", isAuthenticated, async (req: Request, res: Response)
   }
 });
 
+// Voice journal with AI interest signal extraction
+router.post("/api/journal-voice", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const { transcript, childId } = req.body;
+    if (!transcript || typeof transcript !== 'string') {
+      return res.status(400).json({ error: "Transcript is required" });
+    }
+
+    // Get children for context
+    const children = await storage.getChildren(family.id);
+    if (children.length === 0) {
+      return res.status(400).json({ error: "No children found in family" });
+    }
+
+    // Determine which child this entry is for
+    let targetChildId = childId;
+    if (!targetChildId && children.length === 1) {
+      // If only one child, assign to them
+      targetChildId = children[0].id;
+    } else if (!targetChildId) {
+      // Multiple children - use AI to detect which child
+      const childDetectionPrompt = `Given this voice journal transcript about today's learning, which child is this about?
+
+Children: ${children.map((c, i) => `${i + 1}. ${c.name} (age ${c.age})`).join(', ')}
+
+Transcript: "${transcript}"
+
+Respond with ONLY the child's number (1, 2, 3, etc.). If you can't determine, respond with "1".`;
+
+      const detectionResponse = await openai.chat.completions.create({
+        model: "anthropic/claude-3.5-sonnet",
+        messages: [{ role: "user", content: childDetectionPrompt }],
+        temperature: 0,
+        max_tokens: 10,
+      });
+
+      const detectedIndex = parseInt(detectionResponse.choices[0].message.content?.trim() || "1") - 1;
+      targetChildId = children[Math.max(0, Math.min(detectedIndex, children.length - 1))].id;
+    }
+
+    const curriculum = await storage.getCurriculum(family.id);
+    const targetChild = children.find(c => c.id === targetChildId);
+
+    // Extract interest signals using Claude
+    const systemPrompt = `You are an educational AI assistant that analyzes voice journal entries from homeschool families to extract interest signals and learning patterns.
+
+Current family context:
+- This entry is about: ${targetChild?.name} (age ${targetChild?.age})
+- All children: ${children.map(c => `${c.name} (age ${c.age})`).join(', ')}
+- Current curriculum theme: ${curriculum?.curriculumData ? (curriculum.curriculumData as CurriculumData).weeks[0]?.familyTheme : 'Not available'}
+
+Your task is to:
+1. Summarize the journal entry in 2-3 sentences
+2. Identify any new interests, topics, or learning directions mentioned
+3. Detect enthusiasm or engagement patterns
+4. Note any subjects or activities the child wants to explore more
+5. Extract specific skills or concepts demonstrated
+
+Respond in JSON format:
+{
+  "summary": "Brief summary of the journal entry",
+  "interests": ["interest1", "interest2"],
+  "skills": ["skill1", "skill2"],
+  "enthusiasm": "high|medium|low",
+  "notes": "Any additional observations about learning progress or engagement"
+}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "anthropic/claude-3.5-sonnet",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Voice journal transcript:\n\n${transcript}` }
+      ],
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+    });
+
+    const analysis = JSON.parse(completion.choices[0].message.content || '{}');
+
+    // Create journal entry with structured AI analysis in content
+    const enhancedContent = `${transcript}
+
+---
+AI Analysis
+Summary: ${analysis.summary || 'No summary available'}
+Interests: ${analysis.interests?.join(', ') || 'None detected'}
+Skills: ${analysis.skills?.join(', ') || 'None detected'}
+Engagement: ${analysis.enthusiasm || 'Not detected'}
+Notes: ${analysis.notes || 'None'}`;
+
+    const entry = await storage.createJournalEntry({
+      childId: targetChildId,
+      familyId: family.id,
+      entryDate: new Date().toISOString().split('T')[0],
+      content: transcript, // Store original transcript
+      photoUrls: [],
+      aiAnalysis: analysis, // Store structured analysis separately
+    });
+
+    res.json({ 
+      entry, 
+      analysis,
+      childName: targetChild?.name 
+    });
+  } catch (error: any) {
+    console.error('Voice journal error:', error);
+    res.status(500).json({ error: error.message || 'Failed to process voice journal' });
+  }
+});
+
 router.get("/api/journal", isAuthenticated, async (req: Request, res: Response) => {
   try {
     if (!req.user?.id) {

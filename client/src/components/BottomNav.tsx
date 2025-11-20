@@ -6,10 +6,10 @@ export function BottomNav() {
   const [location] = useLocation();
 
   const navItems = [
-    { title: "Today", url: "/today", icon: Home },
-    { title: "This Week", url: "/this-week", icon: Calendar },
-    { title: "Resources", url: "/resources", icon: Library },
-    { title: "Progress", url: "/progress", icon: TrendingUp },
+    { title: "Today", url: "/today", icon: Home, testId: "button-nav-today" },
+    { title: "This Week", url: "/this-week", icon: Calendar, testId: "button-nav-this-week" },
+    { title: "Resources", url: "/resources", icon: Library, testId: "button-nav-resources" },
+    { title: "Progress", url: "/progress", icon: TrendingUp, testId: "button-nav-progress" },
   ];
 
   return (
@@ -27,7 +27,7 @@ export function BottomNav() {
                 "flex flex-col items-center justify-center gap-1 hover-elevate transition-colors",
                 isActive ? "text-primary" : "text-muted-foreground"
               )}
-              data-testid={`nav-${item.title.toLowerCase().replace(" ", "-")}`}
+              data-testid={item.testId}
             >
               <Icon className={cn("w-6 h-6", isActive && "fill-primary/10")} />
               <span className="text-xs font-medium">{item.title}</span>

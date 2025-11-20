@@ -1,19 +1,23 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sparkles, Users, User, MapPin, Mic, CheckCircle2, Calendar } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Sparkles, Users, User, MapPin, Mic, CheckCircle2, Check, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { WeekCurriculum } from "@shared/schema";
-import { format, startOfWeek, addDays, isToday } from "date-fns";
+import { format, startOfWeek } from "date-fns";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function Today() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [completedActivities, setCompletedActivities] = useState<Set<string>>(new Set());
-  const [isRecording, setIsRecording] = useState(false);
+  const { isRecording, transcript, duration, error: recordingError, startRecording, stopRecording, resetRecording } = useVoiceRecording();
 
   const { data: familyData } = useQuery({
     queryKey: ["/api/family"],
@@ -47,10 +51,57 @@ export default function Today() {
     localStorage.setItem(`completed-${todayDate}`, JSON.stringify(Array.from(newSet)));
   };
 
-  const handleVoiceNote = () => {
-    setIsRecording(!isRecording);
-    // TODO: Implement voice recording
+  const saveJournalMutation = useMutation({
+    mutationFn: async (data: { transcript: string }) => {
+      return await apiRequest('/api/journal-voice', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Voice note saved!",
+        description: "Your journal entry has been saved successfully.",
+      });
+      resetRecording();
+      queryClient.invalidateQueries({ queryKey: ['/api/journal'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error saving voice note",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleToggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
   };
+
+  const handleSaveVoiceNote = () => {
+    if (transcript.trim()) {
+      saveJournalMutation.mutate({ transcript });
+    }
+  };
+
+  const handleDiscardVoiceNote = () => {
+    resetRecording();
+  };
+
+  useEffect(() => {
+    if (recordingError) {
+      toast({
+        title: "Recording Error",
+        description: recordingError,
+        variant: "destructive",
+      });
+    }
+  }, [recordingError]);
 
   if (!familyData || !curriculumResponse) {
     return (
@@ -76,20 +127,27 @@ export default function Today() {
     );
   }
   
-  // Get current week and today's day
-  const currentWeekStartDate = new Date((curriculumResponse as any).curriculum?.generatedAt || new Date());
-  const weekStart = startOfWeek(currentWeekStartDate, { weekStartsOn: 1 }); // Monday
+  // Calculate current week properly with clamping
+  const curriculumGeneratedAt = new Date((curriculumResponse as any).curriculum?.generatedAt || new Date());
+  const weekStart = startOfWeek(curriculumGeneratedAt, { weekStartsOn: 1 }); // Monday
   const today = new Date();
   const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
   
-  // Map day number to day name
+  // Calculate week number with proper clamping (1-12)
+  const daysSinceStart = Math.floor((today.getTime() - weekStart.getTime()) / (24 * 60 * 60 * 1000));
+  const rawWeekNumber = Math.floor(daysSinceStart / 7) + 1;
+  const weekNumber = Math.max(1, Math.min(rawWeekNumber, 12));
+  
+  // Map day number to day name (handle weekends as "Weekend")
   type DayName = "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Weekend";
-  const dayNames: (string | DayName)[] = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const todayName = dayNames[dayOfWeek] as DayName | "Sunday" | "Saturday";
+  const getDayName = (day: number): DayName => {
+    const dayMap: DayName[] = ["Weekend", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Weekend"];
+    return dayMap[day];
+  };
+  const todayName = getDayName(dayOfWeek);
 
-  // Find current week
-  const weekNumber = Math.floor((today.getTime() - weekStart.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
-  const currentWeek = curriculumData?.weeks?.find(w => w.weekNumber === Math.min(weekNumber, 12)) || curriculumData?.weeks?.[0];
+  // Find current week with fallback to week 1
+  const currentWeek = curriculumData?.weeks?.find(w => w.weekNumber === weekNumber) || curriculumData?.weeks?.[0];
 
   if (!currentWeek) {
     return (
@@ -274,23 +332,56 @@ export default function Today() {
           <CardHeader>
             <CardTitle className="text-lg font-heading">Quick Journal</CardTitle>
             <CardDescription>
-              Record a 30-second voice note about today's learning
+              Record a voice note about today's learning (up to 30 seconds)
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <Button
               size="lg"
               variant={isRecording ? "destructive" : "default"}
               className="w-full h-16 text-lg"
-              onClick={handleVoiceNote}
+              onClick={handleToggleRecording}
               data-testid="button-voice-note"
+              disabled={saveJournalMutation.isPending}
             >
               <Mic className={`w-6 h-6 mr-2 ${isRecording ? "animate-pulse" : ""}`} />
-              {isRecording ? "Recording... (Tap to stop)" : "Tap to record voice note"}
+              {isRecording 
+                ? `Recording... ${duration}s / 30s` 
+                : "Tap to start recording"}
             </Button>
+
+            {transcript && !isRecording && (
+              <div className="space-y-3">
+                <div className="p-3 bg-muted rounded-lg border border-border">
+                  <p className="text-sm text-muted-foreground mb-1">Transcript:</p>
+                  <p className="text-sm">{transcript}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="default"
+                    className="flex-1"
+                    onClick={handleSaveVoiceNote}
+                    disabled={saveJournalMutation.isPending}
+                    data-testid="button-save-voice-note"
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    Save Journal Entry
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleDiscardVoiceNote}
+                    disabled={saveJournalMutation.isPending}
+                    data-testid="button-discard-voice-note"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {isRecording && (
-              <p className="text-sm text-center text-muted-foreground mt-2">
-                Recording will auto-stop at 30 seconds
+              <p className="text-xs text-center text-muted-foreground">
+                Speak naturally about what you learned today
               </p>
             )}
           </CardContent>

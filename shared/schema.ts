@@ -86,6 +86,7 @@ export const journalEntries = pgTable("journal_entries", {
   entryDate: date("entry_date").notNull(),
   content: text("content").notNull(),
   photoUrls: text("photo_urls").array().default(sql`ARRAY[]::text[]`),
+  aiAnalysis: jsonb("ai_analysis"), // Structured AI analysis: { summary, interests[], skills[], enthusiasm, notes }
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
+import { useMobile } from "@/hooks/useMobile";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger } from "@/components/ui/sidebar";
 import { Home, BookOpen, MapPin, Settings as SettingsIcon, Sparkles, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -162,6 +163,7 @@ function PublicRouter() {
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
+  const isMobile = useMobile();
 
   if (isLoading) {
     return (
@@ -179,12 +181,12 @@ function Router() {
     return <Onboarding />;
   }
 
-  // Mobile-first routes (Today, This Week, Resources, Progress) use bottom nav
+  // Mobile-first routes (Today, This Week, Resources, Progress)
   const mobileRoutes = ["/", "/today", "/this-week", "/resources", "/progress"];
   const isMobileRoute = mobileRoutes.includes(location);
 
-  // For mobile routes, show without sidebar
-  if (isMobileRoute) {
+  // On mobile devices, show mobile layout for mobile routes
+  if (isMobile && isMobileRoute) {
     return (
       <div className="min-h-screen w-full bg-background">
         <MobileRouter />
@@ -192,7 +194,7 @@ function Router() {
     );
   }
 
-  // For desktop routes (Dashboard, Journal, etc.), use sidebar
+  // For desktop or non-mobile routes, use sidebar layout
   const sidebarStyle = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
