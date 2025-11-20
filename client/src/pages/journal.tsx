@@ -61,8 +61,9 @@ export default function Journal() {
   }, [hasCompletedActivities]);
 
   const saveFeedbackMutation = useMutation({
-    mutationFn: async (data: { childId: string; activityId: string; reaction: ReactionType; notes?: string; photoUrl?: string }) => {
+    mutationFn: async (data: { childId: string; activityId: string; reaction?: ReactionType | null; notes?: string | null; photoUrl?: string | null; voiceNoteUrl?: string | null }) => {
       // Backend upsert logic handles create-or-update automatically
+      // undefined = preserve existing, null = clear field, value = update field
       const response = await apiRequest("POST", "/api/activity-feedback", {
         childId: data.childId,
         activityId: data.activityId,
@@ -70,6 +71,7 @@ export default function Journal() {
         reaction: data.reaction,
         notes: data.notes,
         photoUrl: data.photoUrl,
+        voiceNoteUrl: data.voiceNoteUrl,
       });
       return await response.json();
     },
@@ -114,7 +116,8 @@ export default function Journal() {
   const handleReactionClick = (activityId: string, childId: string, reaction: ReactionType) => {
     setFeedbackMap(prev => {
       const currentFeedback = prev[activityId] || {};
-      const newReaction = currentFeedback.reaction === reaction ? undefined : reaction;
+      // Toggle: if same reaction clicked, set to null (clear), otherwise set new value
+      const newReaction = currentFeedback.reaction === reaction ? null : reaction;
       
       const updated = {
         ...prev,
@@ -125,20 +128,19 @@ export default function Journal() {
         },
       };
       
-      // Save to backend if a reaction is selected (synchronous payload derivation)
+      // Always save to backend (synchronous payload derivation)
+      // Send values as-is: undefined preserves existing, null clears, value updates
       const feedbackToSave = updated[activityId];
-      if (feedbackToSave.reaction) {
-        // Use setTimeout to avoid mutating during render
-        setTimeout(() => {
-          saveFeedbackMutation.mutate({
-            childId,
-            activityId,
-            reaction: feedbackToSave.reaction!,
-            notes: feedbackToSave.notes,
-            photoUrl: feedbackToSave.photoUrl,
-          });
-        }, 0);
-      }
+      setTimeout(() => {
+        saveFeedbackMutation.mutate({
+          childId,
+          activityId,
+          reaction: feedbackToSave.reaction,
+          notes: feedbackToSave.notes,
+          photoUrl: feedbackToSave.photoUrl,
+          voiceNoteUrl: feedbackToSave.voiceNoteUrl,
+        });
+      }, 0);
       
       return updated;
     });
@@ -174,22 +176,25 @@ export default function Journal() {
             saveFeedbackMutation.mutate({
               childId,
               activityId,
-              reaction: feedbackToSave.reaction!,
+              reaction: feedbackToSave.reaction,
               notes: feedbackToSave.notes,
               photoUrl,
+              voiceNoteUrl: feedbackToSave.voiceNoteUrl,
             });
           }, 0);
         }
         
+        // Show toast after state update with correct feedback state
+        setTimeout(() => {
+          toast({
+            title: "Photo uploaded!",
+            description: feedbackToSave.reaction 
+              ? "Photo has been added to your feedback."
+              : "Photo added. Select an emoji reaction to save.",
+          });
+        }, 0);
+        
         return updated;
-      });
-
-      const feedbackState = feedbackMap[activityId];
-      toast({
-        title: "Photo uploaded!",
-        description: feedbackState?.reaction 
-          ? "Photo has been added to your feedback."
-          : "Photo added. Select an emoji reaction to save.",
       });
     }
   };

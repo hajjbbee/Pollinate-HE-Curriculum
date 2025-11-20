@@ -565,34 +565,60 @@ export class DatabaseStorage implements IStorage {
 
   // Activity Feedback (emoji reactions, voice notes, photos for planned activities)
   async createActivityFeedback(feedback: InsertActivityFeedback): Promise<ActivityFeedback> {
-    // Upsert: insert new record or update existing one based on (childId, activityId, activityDate)
-    // Only update fields that are explicitly provided (not undefined/null)
-    const updateFields: Record<string, any> = {
-      updatedAt: new Date(),
+    // Fetch existing feedback to merge with new data (prevents data loss on partial updates)
+    const existing = await db
+      .select()
+      .from(activityFeedback)
+      .where(
+        and(
+          eq(activityFeedback.childId, feedback.childId),
+          eq(activityFeedback.activityId, feedback.activityId),
+          eq(activityFeedback.activityDate, feedback.activityDate)
+        )
+      )
+      .limit(1);
+    
+    const existingRecord = existing[0];
+    
+    // Merge existing data with new data
+    // undefined = preserve existing value, null = clear field, value = set new value
+    const mergedData = {
+      familyId: feedback.familyId,
+      childId: feedback.childId,
+      activityId: feedback.activityId,
+      activityDate: feedback.activityDate,
+      reaction: feedback.reaction !== undefined ? feedback.reaction : existingRecord?.reaction,
+      notes: feedback.notes !== undefined ? feedback.notes : existingRecord?.notes,
+      voiceNoteUrl: feedback.voiceNoteUrl !== undefined ? feedback.voiceNoteUrl : existingRecord?.voiceNoteUrl,
+      photoUrl: feedback.photoUrl !== undefined ? feedback.photoUrl : existingRecord?.photoUrl,
+      followUpQuestion: existingRecord?.followUpQuestion || null,
+      followUpResponse: existingRecord?.followUpResponse !== undefined ? existingRecord.followUpResponse : null,
+      obsessionScore: existingRecord?.obsessionScore || 0,
     };
     
-    if (feedback.reaction !== undefined) updateFields.reaction = feedback.reaction;
-    if (feedback.notes !== undefined) updateFields.notes = feedback.notes;
-    if (feedback.voiceNoteUrl !== undefined) updateFields.voiceNoteUrl = feedback.voiceNoteUrl;
-    if (feedback.photoUrl !== undefined) updateFields.photoUrl = feedback.photoUrl;
-    
-    const [result] = await db
-      .insert(activityFeedback)
-      .values({
-        ...feedback,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: [
-          activityFeedback.childId,
-          activityFeedback.activityId,
-          activityFeedback.activityDate,
-        ],
-        set: updateFields,
-      })
-      .returning();
-    return result;
+    if (existingRecord) {
+      // Update existing record
+      const [result] = await db
+        .update(activityFeedback)
+        .set({
+          ...mergedData,
+          updatedAt: new Date(),
+        })
+        .where(eq(activityFeedback.id, existingRecord.id))
+        .returning();
+      return result;
+    } else {
+      // Insert new record
+      const [result] = await db
+        .insert(activityFeedback)
+        .values({
+          ...mergedData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+      return result;
+    }
   }
 
   async getActivityFeedback(activityId: string, date: string): Promise<ActivityFeedback | null> {
