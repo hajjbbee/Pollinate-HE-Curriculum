@@ -107,11 +107,12 @@ export class DatabaseStorage implements IStorage {
     });
 
     if (existingUser) {
-      // Update existing user with new data from OIDC
+      // Update existing user with new data from OIDC (excluding id to prevent foreign key violations)
+      const { id, ...updateData } = userData;
       const [user] = await db
         .update(users)
         .set({
-          ...userData,
+          ...updateData,
           updatedAt: new Date(),
         })
         .where(eq(users.email, userData.email))
@@ -124,9 +125,11 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
-        target: users.id,
+        target: users.email,
         set: {
-          ...userData,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          profileImage: userData.profileImage,
           updatedAt: new Date(),
         },
       })
