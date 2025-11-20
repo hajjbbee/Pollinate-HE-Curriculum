@@ -12,7 +12,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Trash2, Plus, Sparkles, MapPin, Users, Calendar } from "lucide-react";
+import { Trash2, Plus, Sparkles, MapPin, Users, Calendar, ChevronDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -186,6 +187,14 @@ export default function Onboarding() {
     }
   };
 
+  const stepLabels = [
+    { number: 1, label: "Family", icon: Users },
+    { number: 2, label: "Location", icon: MapPin },
+    { number: 3, label: "Learners", icon: Calendar },
+  ];
+
+  const currentStepLabel = stepLabels.find(s => s.number === step);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
@@ -194,9 +203,46 @@ export default function Onboarding() {
             <Sparkles className="w-6 h-6 text-primary" />
             <h1 className="text-xl font-heading font-bold">Evergreen Curriculum AI</h1>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Step {step} of 3</span>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-2" data-testid="button-step-navigation">
+                {currentStepLabel && (
+                  <>
+                    <currentStepLabel.icon className="w-4 h-4" />
+                    <span className="font-medium">{currentStepLabel.label}</span>
+                  </>
+                )}
+                <span className="text-muted-foreground">({step} of 3)</span>
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" data-testid="dropdown-step-navigation">
+              {stepLabels.map((stepItem) => {
+                const Icon = stepItem.icon;
+                const isCompleted = stepItem.number < step;
+                const isCurrent = stepItem.number === step;
+                const canNavigate = isCompleted || isCurrent;
+                return (
+                  <DropdownMenuItem
+                    key={stepItem.number}
+                    disabled={!canNavigate}
+                    className={isCurrent ? "bg-accent" : ""}
+                    onClick={() => {
+                      if (canNavigate) {
+                        setStep(stepItem.number);
+                      }
+                    }}
+                    data-testid={`dropdown-item-step-${stepItem.number}`}
+                  >
+                    <Icon className="w-4 h-4 mr-2" />
+                    <span className="flex-1">{stepItem.label}</span>
+                    {isCompleted && <span className="text-primary">✓</span>}
+                    {isCurrent && <span className="text-primary font-medium">Current</span>}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 

@@ -12,16 +12,28 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-**November 20, 2025** - OpenRouter Integration for Free Tier Testing
-- **Switched to OpenRouter**: Replaced direct Anthropic SDK with OpenRouter proxy
+**November 20, 2025** - Production-Ready Enhancements
+- **OpenRouter Integration**: Replaced direct Anthropic SDK with OpenRouter proxy
   - Model: `anthropic/claude-3.5-sonnet` via OpenRouter API
   - Free tier credits enable testing without billing setup
   - Token limit: 2500 (fits within free tier ~2666 token budget)
   - Generates condensed but complete 12-week curricula
-- **Manual Address Entry**: Onboarding now accepts typed addresses when Google Places autocomplete fails
+  
+- **Production-Ready Error Handling**:
+  - API key validation at startup (OPENROUTER_API_KEY, GOOGLE_MAPS_API_KEY)
+  - Timeout protection: 10s for geocoding, 8s for Places API
+  - Retry logic: 2 attempts with exponential backoff for geocoding
+  - Specific error messages for billing (402), auth (401), and quota issues
+  
+- **Manual Address Entry**: Onboarding accepts typed addresses when Google Places autocomplete fails
   - `lat` and `lng` optional in frontend validation
   - Backend geocodes all addresses via Google Maps Geocoding API
-- **Improved Error Handling**: Graceful fallback when AI generation fails due to credits/billing
+  
+- **Improved Onboarding UX**: Added step navigation dropdown menu
+  - Clear step labels: "Family", "Location", "Learners"
+  - Visual icons for each step (Users, MapPin, Calendar)
+  - Shows completion status with checkmarks
+  - Makes the "Learners" tab more obvious for adding children
 
 **November 19, 2025** - Stripe Subscription Billing & Enhanced Local Opportunities
 - **Stripe Subscription Billing (COMPLETE)**:
