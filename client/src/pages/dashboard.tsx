@@ -141,6 +141,11 @@ export default function Dashboard() {
         <p className="text-muted-foreground mb-6">
           Complete onboarding to generate your personalized curriculum
         </p>
+        <Link href="/onboarding">
+          <Button size="lg" data-testid="button-start-onboarding">
+            Start Onboarding
+          </Button>
+        </Link>
       </div>
     );
   }
