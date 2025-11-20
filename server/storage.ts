@@ -15,6 +15,10 @@ import type {
   UpcomingEvent,
   InsertHomeschoolGroup,
   HomeschoolGroup,
+  InsertActivityFeedback,
+  ActivityFeedback,
+  InsertEmergingInterestSignal,
+  EmergingInterestSignal,
   User,
   UpsertUser,
 } from "@shared/schema";
@@ -83,6 +87,20 @@ export interface IStorage {
   getDailyCompletion(familyId: string, date: string): Promise<{ completed: number; total: number; completedIds: string[] } | null>;
   getDailyCompletions(familyId: string, startDate?: Date, endDate?: Date): Promise<any[]>;
   getCurrentStreak(familyId: string): Promise<number>;
+
+  // Activity Feedback (emoji reactions, voice notes, photos for planned activities)
+  createActivityFeedback(feedback: InsertActivityFeedback): Promise<ActivityFeedback>;
+  getActivityFeedback(activityId: string, date: string): Promise<ActivityFeedback | null>;
+  getActivityFeedbackByChild(childId: string, startDate?: Date, endDate?: Date): Promise<ActivityFeedback[]>;
+  updateActivityFeedback(feedbackId: string, updates: Partial<InsertActivityFeedback>): Promise<ActivityFeedback>;
+  deleteActivityFeedback(feedbackId: string): Promise<void>;
+
+  // Emerging Interest Signals (free-form spontaneous obsessions)
+  createEmergingInterest(signal: InsertEmergingInterestSignal): Promise<EmergingInterestSignal>;
+  getEmergingInterests(childId: string, familyId?: string): Promise<EmergingInterestSignal[]>;
+  getRecentEmergingInterests(childId: string, days?: number): Promise<EmergingInterestSignal[]>;
+  updateEmergingInterest(signalId: string, updates: Partial<InsertEmergingInterestSignal>): Promise<EmergingInterestSignal>;
+  deleteEmergingInterest(signalId: string): Promise<void>;
 }
 
 import { db } from "./db";
@@ -97,8 +115,10 @@ import {
   upcomingEvents,
   homeschoolGroups,
   dailyCompletions,
+  activityFeedback,
+  emergingInterestSignals,
 } from "@shared/schema";
-import { eq, and, desc, gte, lte } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql as sqlOp } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   // User (for authentication)
@@ -541,6 +561,104 @@ export class DatabaseStorage implements IStorage {
     }
 
     return streak;
+  }
+
+  // Activity Feedback (emoji reactions, voice notes, photos for planned activities)
+  async createActivityFeedback(feedback: InsertActivityFeedback): Promise<ActivityFeedback> {
+    const [result] = await db.insert(activityFeedback).values(feedback).returning();
+    return result;
+  }
+
+  async getActivityFeedback(activityId: string, date: string): Promise<ActivityFeedback | null> {
+    const result = await db
+      .select()
+      .from(activityFeedback)
+      .where(and(
+        eq(activityFeedback.activityId, activityId),
+        eq(activityFeedback.activityDate, date)
+      ))
+      .limit(1);
+    
+    return result[0] || null;
+  }
+
+  async getActivityFeedbackByChild(childId: string, startDate?: Date, endDate?: Date): Promise<ActivityFeedback[]> {
+    let query = db
+      .select()
+      .from(activityFeedback)
+      .where(eq(activityFeedback.childId, childId));
+
+    if (startDate && endDate) {
+      query = query.where(and(
+        eq(activityFeedback.childId, childId),
+        gte(activityFeedback.activityDate, startDate.toISOString().split('T')[0]),
+        lte(activityFeedback.activityDate, endDate.toISOString().split('T')[0])
+      ));
+    }
+
+    return await query.orderBy(desc(activityFeedback.activityDate));
+  }
+
+  async updateActivityFeedback(feedbackId: string, updates: Partial<InsertActivityFeedback>): Promise<ActivityFeedback> {
+    const [result] = await db
+      .update(activityFeedback)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(activityFeedback.id, feedbackId))
+      .returning();
+    return result;
+  }
+
+  async deleteActivityFeedback(feedbackId: string): Promise<void> {
+    await db.delete(activityFeedback).where(eq(activityFeedback.id, feedbackId));
+  }
+
+  // Emerging Interest Signals (free-form spontaneous obsessions)
+  async createEmergingInterest(signal: InsertEmergingInterestSignal): Promise<EmergingInterestSignal> {
+    const [result] = await db.insert(emergingInterestSignals).values(signal).returning();
+    return result;
+  }
+
+  async getEmergingInterests(childId: string, familyId?: string): Promise<EmergingInterestSignal[]> {
+    let query = db
+      .select()
+      .from(emergingInterestSignals)
+      .where(eq(emergingInterestSignals.childId, childId));
+
+    if (familyId) {
+      query = query.where(and(
+        eq(emergingInterestSignals.childId, childId),
+        eq(emergingInterestSignals.familyId, familyId)
+      ));
+    }
+
+    return await query.orderBy(desc(emergingInterestSignals.createdAt));
+  }
+
+  async getRecentEmergingInterests(childId: string, days: number = 30): Promise<EmergingInterestSignal[]> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    return await db
+      .select()
+      .from(emergingInterestSignals)
+      .where(and(
+        eq(emergingInterestSignals.childId, childId),
+        gte(emergingInterestSignals.createdAt, cutoffDate)
+      ))
+      .orderBy(desc(emergingInterestSignals.createdAt));
+  }
+
+  async updateEmergingInterest(signalId: string, updates: Partial<InsertEmergingInterestSignal>): Promise<EmergingInterestSignal> {
+    const [result] = await db
+      .update(emergingInterestSignals)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(emergingInterestSignals.id, signalId))
+      .returning();
+    return result;
+  }
+
+  async deleteEmergingInterest(signalId: string): Promise<void> {
+    await db.delete(emergingInterestSignals).where(eq(emergingInterestSignals.id, signalId));
   }
 }
 
