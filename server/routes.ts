@@ -2,7 +2,7 @@ import { Router, type Request, type Response, type Express } from "express";
 import { storage } from "./storage";
 import { insertFamilySchema, insertChildSchema, insertJournalEntrySchema, type CurriculumData, type WeekCurriculum } from "@shared/schema";
 import { z } from "zod";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { createServer } from "http";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -10,9 +10,14 @@ import { CollaborationService } from "./websocket";
 
 const router = Router();
 
-// Initialize Anthropic client
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+// Initialize OpenRouter client (OpenAI-compatible API)
+const openai = new OpenAI({
+  baseURL: "https://openrouter.ai/api/v1",
+  apiKey: process.env.OPENROUTER_API_KEY,
+  defaultHeaders: {
+    "HTTP-Referer": process.env.REPLIT_DOMAINS || "https://replit.app",
+    "X-Title": "Evergreen Curriculum AI",
+  },
 });
 
 // Google Maps API key
@@ -260,12 +265,15 @@ Return JSON in this EXACT structure (no markdown, no code blocks):
   ]
 }`;
 
-  const message = await anthropic.messages.create({
-    model: "claude-3-5-sonnet-20241022",
+  const completion = await openai.chat.completions.create({
+    model: "anthropic/claude-3.5-sonnet",
     max_tokens: 16000,
     temperature: 0.7,
-    system: systemPrompt,
     messages: [
+      {
+        role: "system",
+        content: systemPrompt,
+      },
       {
         role: "user",
         content: userPrompt,
@@ -273,7 +281,7 @@ Return JSON in this EXACT structure (no markdown, no code blocks):
     ],
   });
 
-  const responseText = message.content[0].type === "text" ? message.content[0].text : "";
+  const responseText = completion.choices[0]?.message?.content || "";
   
   // Remove markdown code blocks if present
   let cleanedResponse = responseText.trim();
