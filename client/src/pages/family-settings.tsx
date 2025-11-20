@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
-import { MapPin, User, Calendar, Plus, Trash2, Save, Sparkles } from "lucide-react";
+import { MapPin, User, Calendar, Plus, Trash2, Save, Sparkles, Facebook } from "lucide-react";
 import { PlacesAutocomplete } from "@/components/PlacesAutocomplete";
 import { useLocation } from "wouter";
 
@@ -46,6 +46,8 @@ export default function FamilySettings() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [newGroupUrl, setNewGroupUrl] = useState("");
+  const [newGroupName, setNewGroupName] = useState("");
 
   const { data: familyData, isLoading: familyLoading } = useQuery({
     queryKey: ["/api/family"],
@@ -55,6 +57,12 @@ export default function FamilySettings() {
 
   const { data: children, isLoading: childrenLoading } = useQuery({
     queryKey: ["/api/children"],
+    retry: false,
+    enabled: !!user,
+  });
+
+  const { data: facebookGroups = [], isLoading: groupsLoading } = useQuery({
+    queryKey: ["/api/groups"],
     retry: false,
     enabled: !!user,
   });
@@ -105,6 +113,41 @@ export default function FamilySettings() {
       });
     }
   }, [familyData, children]);
+
+  const addGroupMutation = useMutation({
+    mutationFn: async (data: { groupUrl: string; groupName: string }) => {
+      return await apiRequest("POST", "/api/groups", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      setNewGroupUrl("");
+      setNewGroupName("");
+      toast({
+        title: "Facebook group connected!",
+        description: "Events from this group will appear in your Homeschool Happenings.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to add group",
+        description: error.message || "Please check the URL and try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: async (groupId: string) => {
+      return await apiRequest("DELETE", `/api/groups/${groupId}`, null);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      toast({
+        title: "Group disconnected",
+        description: "Events from this group will no longer appear.",
+      });
+    },
+  });
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: FamilySettingsData) => {
@@ -436,6 +479,108 @@ export default function FamilySettings() {
                   />
                 </div>
               ))}
+            </CardContent>
+          </Card>
+
+          {/* Facebook Groups (Optional) */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Facebook className="w-5 h-5 text-blue-600" />
+                <CardTitle>Connected Facebook Groups (Optional)</CardTitle>
+              </div>
+              <CardDescription>
+                Connect 1-5 private homeschool Facebook groups to automatically discover local events.
+                We'll match events to your curriculum themes and show them in "Homeschool Happenings Near You".
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Add Group Form */}
+              <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="group-url">Facebook Group URL</Label>
+                    <Input
+                      id="group-url"
+                      placeholder="https://www.facebook.com/groups/groupname"
+                      value={newGroupUrl}
+                      onChange={(e) => setNewGroupUrl(e.target.value)}
+                      data-testid="input-group-url"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="group-name">Group Name</Label>
+                    <Input
+                      id="group-name"
+                      placeholder="Denver Wild & Free"
+                      value={newGroupName}
+                      onChange={(e) => setNewGroupName(e.target.value)}
+                      data-testid="input-group-name"
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addGroupMutation.mutate({ groupUrl: newGroupUrl, groupName: newGroupName })}
+                  disabled={!newGroupUrl || !newGroupName || addGroupMutation.isPending || (facebookGroups?.length ?? 0) >= 5}
+                  data-testid="button-add-group"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  {addGroupMutation.isPending ? "Adding..." : "Add Group"}
+                </Button>
+                {(facebookGroups?.length ?? 0) >= 5 && (
+                  <p className="text-sm text-muted-foreground">
+                    Maximum of 5 groups reached. Remove a group to add another.
+                  </p>
+                )}
+              </div>
+
+              {/* Connected Groups List */}
+              {groupsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : facebookGroups && facebookGroups.length > 0 ? (
+                <div className="space-y-2">
+                  <Label>Connected Groups ({facebookGroups.length}/5)</Label>
+                  {facebookGroups.map((group: any) => (
+                    <div
+                      key={group.id}
+                      className="flex items-center justify-between p-3 border rounded-lg hover-elevate"
+                      data-testid={`group-item-${group.id}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Facebook className="w-4 h-4 text-blue-600" />
+                        <div>
+                          <p className="font-medium" data-testid={`text-group-name-${group.id}`}>
+                            {group.groupName}
+                          </p>
+                          <p className="text-sm text-muted-foreground truncate max-w-md">
+                            {group.groupUrl}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteGroupMutation.mutate(group.id)}
+                        disabled={deleteGroupMutation.isPending}
+                        data-testid={`button-remove-group-${group.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">
+                  No groups connected yet. Add a group above to get started!
+                </p>
+              )}
             </CardContent>
           </Card>
 
