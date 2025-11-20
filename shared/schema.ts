@@ -144,6 +144,7 @@ export const dailyCompletions = pgTable("daily_completions", {
   completionDate: date("completion_date").notNull(),
   activitiesCompleted: integer("activities_completed").notNull().default(0),
   totalActivities: integer("total_activities").notNull().default(0),
+  completedIds: text("completed_ids").array().notNull().default(sql`ARRAY[]::text[]`),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

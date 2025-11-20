@@ -79,7 +79,8 @@ export interface IStorage {
   updateFamilyEventsFetchedAt(familyId: string): Promise<void>;
 
   // Daily Completions (for streak tracking)
-  upsertDailyCompletion(familyId: string, date: string, completed: number, total: number): Promise<void>;
+  upsertDailyCompletion(familyId: string, date: string, completed: number, total: number, completedIds: string[]): Promise<void>;
+  getDailyCompletion(familyId: string, date: string): Promise<{ completed: number; total: number; completedIds: string[] } | null>;
   getDailyCompletions(familyId: string, startDate?: Date, endDate?: Date): Promise<any[]>;
   getCurrentStreak(familyId: string): Promise<number>;
 }
@@ -423,7 +424,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Daily Completions (for streak tracking)
-  async upsertDailyCompletion(familyId: string, date: string, completed: number, total: number): Promise<void> {
+  async upsertDailyCompletion(familyId: string, date: string, completed: number, total: number, completedIds: string[]): Promise<void> {
     // Check if entry exists for this family and date
     const existing = await db
       .select()
@@ -441,6 +442,7 @@ export class DatabaseStorage implements IStorage {
         .set({
           activitiesCompleted: completed,
           totalActivities: total,
+          completedIds,
         })
         .where(and(
           eq(dailyCompletions.familyId, familyId),
@@ -453,8 +455,30 @@ export class DatabaseStorage implements IStorage {
         completionDate: date,
         activitiesCompleted: completed,
         totalActivities: total,
+        completedIds,
       });
     }
+  }
+
+  async getDailyCompletion(familyId: string, date: string): Promise<{ completed: number; total: number; completedIds: string[] } | null> {
+    const result = await db
+      .select()
+      .from(dailyCompletions)
+      .where(and(
+        eq(dailyCompletions.familyId, familyId),
+        eq(dailyCompletions.completionDate, date)
+      ))
+      .limit(1);
+
+    if (result.length === 0) {
+      return null;
+    }
+
+    return {
+      completed: result[0].activitiesCompleted,
+      total: result[0].totalActivities,
+      completedIds: result[0].completedIds || [],
+    };
   }
 
   async getDailyCompletions(familyId: string, startDate?: Date, endDate?: Date): Promise<any[]> {

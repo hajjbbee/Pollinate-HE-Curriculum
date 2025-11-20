@@ -37,17 +37,31 @@ export default function Today() {
 
   const currentStreak = streakData?.streak || 0;
 
-  // Load completed activities from localStorage
+  const todayDate = format(new Date(), "yyyy-MM-dd");
+
+  const { data: dailyCompletionData } = useQuery<{ completed: number; total: number; completedIds: string[] }>({
+    queryKey: ["/api/daily-completion", todayDate],
+    enabled: !!user,
+  });
+
+  // Load completed activities from backend, with localStorage as fallback
   useEffect(() => {
-    const todayDate = format(new Date(), "yyyy-MM-dd");
-    const stored = localStorage.getItem(`completed-${todayDate}`);
-    if (stored) {
-      setCompletedActivities(new Set(JSON.parse(stored)));
+    if (dailyCompletionData && dailyCompletionData.completedIds && dailyCompletionData.completedIds.length > 0) {
+      // Hydrate from backend - this is the source of truth
+      setCompletedActivities(new Set(dailyCompletionData.completedIds));
+      // Also sync to localStorage for offline support
+      localStorage.setItem(`completed-${todayDate}`, JSON.stringify(dailyCompletionData.completedIds));
+    } else {
+      // Fallback to localStorage only if backend has no data
+      const stored = localStorage.getItem(`completed-${todayDate}`);
+      if (stored) {
+        setCompletedActivities(new Set(JSON.parse(stored)));
+      }
     }
-  }, []);
+  }, [dailyCompletionData, todayDate]);
 
   const trackCompletionMutation = useMutation({
-    mutationFn: async (data: { date: string; completed: number; total: number }) => {
+    mutationFn: async (data: { date: string; completed: number; total: number; completedIds: string[] }) => {
       return await apiRequest('/api/daily-completion', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -55,6 +69,14 @@ export default function Today() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/streak'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/daily-completion'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to save progress",
+        description: error.message || "Your progress couldn't be saved. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -80,13 +102,15 @@ export default function Today() {
     }
     
     setCompletedActivities(newSet);
-    localStorage.setItem(`completed-${todayDate}`, JSON.stringify(Array.from(newSet)));
+    const completedIdsArray = Array.from(newSet);
+    localStorage.setItem(`completed-${todayDate}`, JSON.stringify(completedIdsArray));
     
-    // Track completion in backend
+    // Track completion in backend with specific activity IDs
     trackCompletionMutation.mutate({
       date: todayDate,
       completed: newSet.size,
       total: totalActivities,
+      completedIds: completedIdsArray,
     });
   };
 
