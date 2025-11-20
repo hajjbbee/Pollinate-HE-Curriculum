@@ -12,7 +12,24 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-**November 20, 2025** - Production-Ready Enhancements, Real-Time Events & Homeschool Groups
+**November 20, 2025** - Dashboard Redesign & Production-Ready Enhancements
+
+- **Dashboard Redesign - All 12 Weeks View** (COMPLETE)
+  - **Vertical Accordion Layout**: Shows all 12 weeks simultaneously instead of single-week navigation
+  - **Week Preview Cards**: Collapsed state shows theme, date range, 2-3 activity/resource badges, progress ring, and "Regenerate" button
+  - **Desktop Calendar Sidebar**: 280px sticky sidebar with all weeks listed, current week highlighted in green
+  - **Mobile Week Selector**: Horizontal scrollable week selector for responsive design
+  - **Progress Rings**: SVG circle indicators showing journal entry completion (X/5 days) per week
+  - **Smart Current Week Calculation**: Derives current week from today's date vs curriculum.generatedAt
+    - Handles edge cases: future curriculum start (defaults to week 1), past 12 weeks (defaults to week 12)
+    - Re-calculates when curriculum is regenerated
+  - **Accurate Progress Binning**: Uses exact date range comparison for journal entries instead of buggy isSameWeek
+  - **Lazy Rendering Performance**: Only mounts heavy content (children plans, opportunities, resources) for expanded weeks
+    - Tracks expandedWeeks in Set<number> state
+    - Dramatically improves initial render time on mobile devices
+  - **Critical Bug Fix**: Fixed upsertUser foreign key constraint violations by excluding 'id' from updates and using email for conflict resolution
+
+**November 20, 2025** - Real-Time Events & Homeschool Groups
 - **My Homeschool Groups Feature**: Manual Facebook group event integration (COMPLETE)
   - **Settings Management**: Add/remove Facebook groups by URL and name
   - **Manual Event Entry**: Collapsible forms to add events from each group
