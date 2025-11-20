@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -56,16 +56,22 @@ export default function Journal() {
   const hasCompletedActivities = completedIds.length > 0;
 
   // Auto-open emerging interests when no completed activities
-  useState(() => {
+  useEffect(() => {
     setEmergingInterestsOpen(!hasCompletedActivities);
-  });
+  }, [hasCompletedActivities]);
 
   const saveFeedbackMutation = useMutation({
     mutationFn: async (data: { childId: string; activityId: string; reaction: ReactionType; notes?: string; photoUrl?: string }) => {
-      return await apiRequest("POST", "/api/activity-feedback", {
-        ...data,
+      // Backend upsert logic handles create-or-update automatically
+      const response = await apiRequest("POST", "/api/activity-feedback", {
+        childId: data.childId,
+        activityId: data.activityId,
         activityDate: todayDate,
+        reaction: data.reaction,
+        notes: data.notes,
+        photoUrl: data.photoUrl,
       });
+      return await response.json();
     },
     onSuccess: () => {
       toast({
@@ -106,30 +112,39 @@ export default function Journal() {
   });
 
   const handleReactionClick = (activityId: string, childId: string, reaction: ReactionType) => {
-    const currentFeedback = feedbackMap[activityId] || {};
-    const newReaction = currentFeedback.reaction === reaction ? undefined : reaction;
-    
-    setFeedbackMap(prev => ({
-      ...prev,
-      [activityId]: {
-        ...currentFeedback,
-        activityId,
-        reaction: newReaction,
-      },
-    }));
-
-    if (newReaction) {
-      saveFeedbackMutation.mutate({
-        childId,
-        activityId,
-        reaction: newReaction,
-        notes: currentFeedback.notes,
-        photoUrl: currentFeedback.photoUrl,
-      });
-    }
+    setFeedbackMap(prev => {
+      const currentFeedback = prev[activityId] || {};
+      const newReaction = currentFeedback.reaction === reaction ? undefined : reaction;
+      
+      const updated = {
+        ...prev,
+        [activityId]: {
+          ...currentFeedback,
+          activityId,
+          reaction: newReaction,
+        },
+      };
+      
+      // Save to backend if a reaction is selected (synchronous payload derivation)
+      const feedbackToSave = updated[activityId];
+      if (feedbackToSave.reaction) {
+        // Use setTimeout to avoid mutating during render
+        setTimeout(() => {
+          saveFeedbackMutation.mutate({
+            childId,
+            activityId,
+            reaction: feedbackToSave.reaction!,
+            notes: feedbackToSave.notes,
+            photoUrl: feedbackToSave.photoUrl,
+          });
+        }, 0);
+      }
+      
+      return updated;
+    });
   };
 
-  const handleUploadComplete = async (activityId: string, result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+  const handleUploadComplete = async (activityId: string, childId: string, result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
     const uploadedUrls = result.successful?.map((file) => file.uploadURL) || [];
     if (uploadedUrls.length > 0) {
       const photoUrl = uploadedUrls[0];
@@ -141,17 +156,40 @@ export default function Journal() {
         console.error("Failed to set photo ACL:", error);
       }
 
-      setFeedbackMap(prev => ({
-        ...prev,
-        [activityId]: {
-          ...(prev[activityId] || { activityId }),
-          photoUrl,
-        },
-      }));
+      // Update local state and persist if reaction exists (synchronous payload derivation)
+      setFeedbackMap(prev => {
+        const updated = {
+          ...prev,
+          [activityId]: {
+            ...(prev[activityId] || { activityId }),
+            photoUrl,
+          },
+        };
+        
+        // Save to backend if a reaction already exists
+        const feedbackToSave = updated[activityId];
+        if (feedbackToSave.reaction) {
+          // Use setTimeout to avoid mutating during render
+          setTimeout(() => {
+            saveFeedbackMutation.mutate({
+              childId,
+              activityId,
+              reaction: feedbackToSave.reaction!,
+              notes: feedbackToSave.notes,
+              photoUrl,
+            });
+          }, 0);
+        }
+        
+        return updated;
+      });
 
+      const feedbackState = feedbackMap[activityId];
       toast({
         title: "Photo uploaded!",
-        description: "Photo has been added to your feedback.",
+        description: feedbackState?.reaction 
+          ? "Photo has been added to your feedback."
+          : "Photo added. Select an emoji reaction to save.",
       });
     }
   };
@@ -332,7 +370,7 @@ export default function Journal() {
                     ) : (
                       <ObjectUploader
                         onGetUploadParameters={handleGetUploadParameters}
-                        onComplete={(result) => handleUploadComplete(activity.id, result)}
+                        onComplete={(result) => handleUploadComplete(activity.id, activity.childId, result)}
                         maxNumberOfFiles={1}
                         buttonClassName="gap-2"
                       >

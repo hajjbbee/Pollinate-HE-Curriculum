@@ -10,6 +10,7 @@ import {
   boolean,
   real,
   date,
+  unique,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -164,7 +165,9 @@ export const activityFeedback = pgTable("activity_feedback", {
   obsessionScore: integer("obsession_score").default(0), // AI-calculated score
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  unique("activity_feedback_unique").on(table.childId, table.activityId, table.activityDate),
+]);
 
 // Emerging interest signals table (free-form spontaneous obsessions)
 export const emergingInterestSignals = pgTable("emerging_interest_signals", {

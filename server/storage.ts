@@ -565,7 +565,33 @@ export class DatabaseStorage implements IStorage {
 
   // Activity Feedback (emoji reactions, voice notes, photos for planned activities)
   async createActivityFeedback(feedback: InsertActivityFeedback): Promise<ActivityFeedback> {
-    const [result] = await db.insert(activityFeedback).values(feedback).returning();
+    // Upsert: insert new record or update existing one based on (childId, activityId, activityDate)
+    // Only update fields that are explicitly provided (not undefined/null)
+    const updateFields: Record<string, any> = {
+      updatedAt: new Date(),
+    };
+    
+    if (feedback.reaction !== undefined) updateFields.reaction = feedback.reaction;
+    if (feedback.notes !== undefined) updateFields.notes = feedback.notes;
+    if (feedback.voiceNoteUrl !== undefined) updateFields.voiceNoteUrl = feedback.voiceNoteUrl;
+    if (feedback.photoUrl !== undefined) updateFields.photoUrl = feedback.photoUrl;
+    
+    const [result] = await db
+      .insert(activityFeedback)
+      .values({
+        ...feedback,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [
+          activityFeedback.childId,
+          activityFeedback.activityId,
+          activityFeedback.activityDate,
+        ],
+        set: updateFields,
+      })
+      .returning();
     return result;
   }
 
