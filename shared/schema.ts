@@ -148,6 +148,40 @@ export const dailyCompletions = pgTable("daily_completions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Activity feedback table (emoji reactions, voice notes, photos for planned activities)
+export const activityFeedback = pgTable("activity_feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  familyId: varchar("family_id").notNull().references(() => families.id, { onDelete: "cascade" }),
+  childId: varchar("child_id").notNull().references(() => children.id, { onDelete: "cascade" }),
+  activityId: varchar("activity_id").notNull(), // Reference to activity in curriculum (e.g., "family-activity", "child-{id}")
+  activityDate: date("activity_date").notNull(),
+  reaction: varchar("reaction", { enum: ["loved", "okay", "not_today"] }), // 🌟, 🙂, 😅
+  notes: text("notes"),
+  voiceNoteUrl: text("voice_note_url"),
+  photoUrl: text("photo_url"),
+  followUpQuestion: text("follow_up_question"), // AI-generated question
+  followUpResponse: boolean("follow_up_response"), // true = Yes, false = No, null = not answered
+  obsessionScore: integer("obsession_score").default(0), // AI-calculated score
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Emerging interest signals table (free-form spontaneous obsessions)
+export const emergingInterestSignals = pgTable("emerging_interest_signals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  familyId: varchar("family_id").notNull().references(() => families.id, { onDelete: "cascade" }),
+  childId: varchar("child_id").notNull().references(() => children.id, { onDelete: "cascade" }),
+  source: varchar("source", { enum: ["free_form", "ai_followup"] }).notNull().default("free_form"),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  voiceNoteUrl: text("voice_note_url"),
+  photoUrl: text("photo_url"),
+  priorityScore: integer("priority_score").notNull().default(100), // High = 100, treat as HIGH signal
+  scheduled: boolean("scheduled").notNull().default(false), // true = added to curriculum
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Upcoming events table (from Eventbrite, Google Places, Facebook Groups)
 export const upcomingEvents = pgTable("upcoming_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -275,6 +309,18 @@ export const insertJournalEntrySchema = createInsertSchema(journalEntries).omit(
   updatedAt: true,
 });
 
+export const insertActivityFeedbackSchema = createInsertSchema(activityFeedback).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEmergingInterestSignalSchema = createInsertSchema(emergingInterestSignals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertLocalOpportunitySchema = createInsertSchema(localOpportunities).omit({
   id: true,
   cachedAt: true,
@@ -312,6 +358,12 @@ export type Curriculum = typeof curricula.$inferSelect;
 
 export type InsertJournalEntry = z.infer<typeof insertJournalEntrySchema>;
 export type JournalEntry = typeof journalEntries.$inferSelect;
+
+export type InsertActivityFeedback = z.infer<typeof insertActivityFeedbackSchema>;
+export type ActivityFeedback = typeof activityFeedback.$inferSelect;
+
+export type InsertEmergingInterestSignal = z.infer<typeof insertEmergingInterestSignalSchema>;
+export type EmergingInterestSignal = typeof emergingInterestSignals.$inferSelect;
 
 export type InsertLocalOpportunity = z.infer<typeof insertLocalOpportunitySchema>;
 export type LocalOpportunity = typeof localOpportunities.$inferSelect;
