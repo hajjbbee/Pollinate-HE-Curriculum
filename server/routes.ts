@@ -380,14 +380,28 @@ router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Respon
     }
 
     // Generate initial curriculum
-    const curriculumData = await generateCurriculum(family, createdChildren, opportunities);
+    try {
+      const curriculumData = await generateCurriculum(family, createdChildren, opportunities);
 
-    await storage.createCurriculum({
-      familyId: family.id,
-      generatedAt: new Date(),
-      curriculumData,
-      isActive: true,
-    });
+      await storage.createCurriculum({
+        familyId: family.id,
+        generatedAt: new Date(),
+        curriculumData,
+        isActive: true,
+      });
+    } catch (aiError: any) {
+      console.error("Curriculum generation error:", aiError);
+      
+      // Check if it's an Anthropic API billing/credit error
+      if (aiError.message?.includes("credit balance") || aiError.message?.includes("billing")) {
+        return res.status(402).json({ 
+          error: "AI service billing issue. Please check your Anthropic account credits at console.anthropic.com and add payment method or credits to continue." 
+        });
+      }
+      
+      // For other AI errors, still allow onboarding to complete
+      console.warn("Curriculum generation failed, but onboarding will complete. User can regenerate later.");
+    }
 
     res.json({ family, children: createdChildren });
   } catch (error: any) {
