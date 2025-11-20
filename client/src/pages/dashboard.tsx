@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Sparkles, RefreshCw, Calendar, TrendingUp, MapPin, BookOpen, ExternalLink, Users, Zap, CalendarDays, Clock, DollarSign, Leaf, Gift, Copy, CheckCircle2 } from "lucide-react";
+import { Sparkles, RefreshCw, Calendar, TrendingUp, MapPin, BookOpen, ExternalLink, Users, Zap, CalendarDays, Clock, DollarSign, Leaf, Gift, Copy, CheckCircle2, ShoppingBasket, Tag } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { CurriculumData, WeekCurriculum, UpcomingEvent } from "@shared/schema";
 import { Link } from "wouter";
@@ -446,18 +446,18 @@ export default function Dashboard() {
         <Card className="mt-6">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <CalendarDays className="w-5 h-5 text-primary" />
-              <CardTitle className="font-heading">Upcoming Events</CardTitle>
+              <Calendar className="w-5 h-5 text-primary" />
+              <CardTitle className="font-heading">Happening Soon</CardTitle>
             </div>
             <CardDescription>
-              Real-time local events matching this week's theme
+              Local events in the next 14 days matching this week's theme (refreshed every 6 hours)
             </CardDescription>
           </CardHeader>
           <CardContent>
             {eventsLoading ? (
               <div className="grid md:grid-cols-2 gap-4">
                 {[1, 2, 3, 4].map((i) => (
-                  <Skeleton key={i} className="h-48" />
+                  <Skeleton key={i} className="h-40" />
                 ))}
               </div>
             ) : eventsError ? (
@@ -466,41 +466,45 @@ export default function Dashboard() {
               </div>
             ) : weeklyEvents.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <CalendarDays className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">No events found for this week</p>
+                <Calendar className="w-12 h-12 mx-auto mb-3 opacity-20 text-primary" />
+                <p className="font-medium">No upcoming events found</p>
                 <p className="text-sm mt-1">Check back later as we continuously discover new opportunities!</p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
                 {weeklyEvents.slice(0, 8).map((event, idx) => (
-                  <Card key={event.id} className="hover-elevate active-elevate-2">
+                  <Card key={event.id} className="hover-elevate active-elevate-2 border-primary/10">
                     <CardContent className="p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <h4 className="font-heading font-semibold text-sm pr-2">{event.eventName}</h4>
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Calendar className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-heading font-semibold text-sm mb-1 pr-2">{event.eventName}</h4>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(event.eventDate), "EEE, MMM d 'at' h:mm a")}
+                          </p>
+                        </div>
                         {event.cost === "FREE" && (
-                          <Badge variant="default" className="bg-green-500/10 text-green-700 dark:text-green-300 shrink-0">
+                          <Badge variant="default" className="bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20 shrink-0">
                             FREE
                           </Badge>
                         )}
                       </div>
                       
-                      <div className="space-y-2 mb-3">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="w-3.5 h-3.5 shrink-0" />
-                          <span>{format(new Date(event.eventDate), "EEE, MMM d 'at' h:mm a")}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <MapPin className="w-3.5 h-3.5 shrink-0" />
+                      <div className="space-y-1.5 mb-3">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <MapPin className="w-3 h-3 shrink-0 text-primary/60" />
                           <span className="truncate">{event.location}</span>
                           {event.driveMinutes && (
-                            <Badge variant="outline" className="text-xs shrink-0">
+                            <Badge variant="outline" className="text-xs shrink-0 border-primary/20">
                               {event.driveMinutes} min
                             </Badge>
                           )}
                         </div>
                         {event.cost !== "FREE" && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <DollarSign className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                          <div className="flex items-center gap-2 text-xs">
+                            <DollarSign className="w-3 h-3 shrink-0 text-primary/60" />
                             <span className="font-semibold text-primary">{event.cost}</span>
                           </div>
                         )}
@@ -514,13 +518,13 @@ export default function Dashboard() {
                       </div>
 
                       {event.whyItFits && (
-                        <p className="text-xs text-muted-foreground mb-3 italic border-l-2 border-primary/20 pl-2">
+                        <p className="text-xs text-muted-foreground mb-3 italic border-l-2 border-primary/30 pl-2.5 py-0.5">
                           {event.whyItFits}
                         </p>
                       )}
 
                       {event.ticketUrl && (
-                        <Button variant="default" size="sm" className="w-full" asChild>
+                        <Button variant="outline" size="sm" className="w-full hover-elevate" asChild>
                           <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer" data-testid={`link-event-${idx}`}>
                             <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
                             {event.source === "eventbrite" ? "Get Tickets" : "Learn More"}
@@ -539,8 +543,8 @@ export default function Dashboard() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-primary" />
-                <CardTitle className="font-heading">Resource List</CardTitle>
+                <ShoppingBasket className="w-5 h-5 text-primary" />
+                <CardTitle className="font-heading">Learning Resources</CardTitle>
               </div>
               <Button
                 variant="outline"
@@ -563,6 +567,7 @@ export default function Dashboard() {
                   });
                 }}
                 data-testid="button-copy-resources"
+                className="hover-elevate"
               >
                 {copiedResources ? (
                   <>
@@ -572,13 +577,13 @@ export default function Dashboard() {
                 ) : (
                   <>
                     <Copy className="w-4 h-4 mr-2" />
-                    Copy to Shopping List
+                    Copy List
                   </>
                 )}
               </Button>
             </div>
             <CardDescription>
-              {curriculum?.weeks[currentWeekIndex]?.resources?.length || 0} curated resources for this week's theme
+              {curriculum?.weeks[currentWeekIndex]?.resources?.length || 0} curated resources (free, budget-friendly, and household items)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -587,7 +592,7 @@ export default function Dashboard() {
               if (!currentWeek?.resources || currentWeek.resources.length === 0) {
                 return (
                   <div className="text-center py-8 text-muted-foreground">
-                    <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <ShoppingBasket className="w-12 h-12 mx-auto mb-3 opacity-20 text-primary" />
                     <p className="font-medium">No resources available</p>
                     <p className="text-sm mt-1">Resources will appear here after curriculum generation</p>
                   </div>
@@ -601,34 +606,36 @@ export default function Dashboard() {
               return (
                 <Accordion type="multiple" defaultValue={["free", "low-cost", "recycled"]} className="w-full">
                   {freeResources.length > 0 && (
-                    <AccordionItem value="free">
+                    <AccordionItem value="free" className="border-green-500/20">
                       <AccordionTrigger className="hover:no-underline" data-testid="accordion-free-resources">
-                        <div className="flex items-center gap-2">
-                          <Gift className="w-5 h-5 text-green-600 dark:text-green-400" />
-                          <span className="font-heading font-semibold">FREE Resources</span>
-                          <Badge variant="secondary" className="ml-2">{freeResources.length}</Badge>
+                        <div className="flex items-center gap-3">
+                          <div className="shrink-0 w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                            <Gift className="w-4 h-4 text-green-600 dark:text-green-400" />
+                          </div>
+                          <span className="font-heading font-semibold text-sm">FREE Resources</span>
+                          <Badge variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20">
+                            {freeResources.length}
+                          </Badge>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent>
-                        <div className="space-y-3 pt-2">
+                        <div className="space-y-2 pt-2 pl-11">
                           {freeResources.map((resource, idx) => (
-                            <Card key={idx} className="hover-elevate" data-testid={`card-free-resource-${idx}`}>
-                              <CardContent className="p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex-1">
-                                    <h4 className="font-semibold text-sm mb-1">{resource.title}</h4>
-                                    <p className="text-sm text-muted-foreground">{resource.description}</p>
-                                  </div>
-                                  {resource.link && (
-                                    <Button variant="ghost" size="sm" asChild className="shrink-0">
-                                      <a href={resource.link} target="_blank" rel="noopener noreferrer" data-testid={`link-free-resource-${idx}`}>
-                                        <ExternalLink className="w-4 h-4" />
-                                      </a>
-                                    </Button>
-                                  )}
+                            <div key={idx} className="group p-3 rounded-lg border border-primary/10 hover-elevate bg-card" data-testid={`card-free-resource-${idx}`}>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-sm mb-0.5">{resource.title}</h4>
+                                  <p className="text-xs text-muted-foreground">{resource.description}</p>
                                 </div>
-                              </CardContent>
-                            </Card>
+                                {resource.link && (
+                                  <Button variant="ghost" size="sm" asChild className="shrink-0 h-8 w-8 p-0">
+                                    <a href={resource.link} target="_blank" rel="noopener noreferrer" data-testid={`link-free-resource-${idx}`}>
+                                      <ExternalLink className="w-3.5 h-3.5" />
+                                    </a>
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
                           ))}
                         </div>
                       </AccordionContent>
@@ -636,34 +643,36 @@ export default function Dashboard() {
                   )}
 
                   {lowCostResources.length > 0 && (
-                    <AccordionItem value="low-cost">
+                    <AccordionItem value="low-cost" className="border-primary/20">
                       <AccordionTrigger className="hover:no-underline" data-testid="accordion-lowcost-resources">
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="w-5 h-5 text-primary" />
-                          <span className="font-heading font-semibold">Low-Cost Resources (under $15)</span>
-                          <Badge variant="secondary" className="ml-2">{lowCostResources.length}</Badge>
+                        <div className="flex items-center gap-3">
+                          <div className="shrink-0 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Tag className="w-4 h-4 text-primary" />
+                          </div>
+                          <span className="font-heading font-semibold text-sm">Budget-Friendly (under $15)</span>
+                          <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                            {lowCostResources.length}
+                          </Badge>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent>
-                        <div className="space-y-3 pt-2">
+                        <div className="space-y-2 pt-2 pl-11">
                           {lowCostResources.map((resource, idx) => (
-                            <Card key={idx} className="hover-elevate" data-testid={`card-lowcost-resource-${idx}`}>
-                              <CardContent className="p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex-1">
-                                    <h4 className="font-semibold text-sm mb-1">{resource.title}</h4>
-                                    <p className="text-sm text-muted-foreground">{resource.description}</p>
-                                  </div>
-                                  {resource.link && (
-                                    <Button variant="ghost" size="sm" asChild className="shrink-0">
-                                      <a href={resource.link} target="_blank" rel="noopener noreferrer" data-testid={`link-lowcost-resource-${idx}`}>
-                                        <ExternalLink className="w-4 h-4" />
-                                      </a>
-                                    </Button>
-                                  )}
+                            <div key={idx} className="group p-3 rounded-lg border border-primary/10 hover-elevate bg-card" data-testid={`card-lowcost-resource-${idx}`}>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-sm mb-0.5">{resource.title}</h4>
+                                  <p className="text-xs text-muted-foreground">{resource.description}</p>
                                 </div>
-                              </CardContent>
-                            </Card>
+                                {resource.link && (
+                                  <Button variant="ghost" size="sm" asChild className="shrink-0 h-8 w-8 p-0">
+                                    <a href={resource.link} target="_blank" rel="noopener noreferrer" data-testid={`link-lowcost-resource-${idx}`}>
+                                      <ExternalLink className="w-3.5 h-3.5" />
+                                    </a>
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
                           ))}
                         </div>
                       </AccordionContent>
@@ -671,34 +680,36 @@ export default function Dashboard() {
                   )}
 
                   {recycledResources.length > 0 && (
-                    <AccordionItem value="recycled">
+                    <AccordionItem value="recycled" className="border-green-500/20">
                       <AccordionTrigger className="hover:no-underline" data-testid="accordion-recycled-resources">
-                        <div className="flex items-center gap-2">
-                          <Leaf className="w-5 h-5 text-green-700 dark:text-green-500" />
-                          <span className="font-heading font-semibold">Recycled & Household Items</span>
-                          <Badge variant="secondary" className="ml-2">{recycledResources.length}</Badge>
+                        <div className="flex items-center gap-3">
+                          <div className="shrink-0 w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                            <ShoppingBasket className="w-4 h-4 text-green-700 dark:text-green-500" />
+                          </div>
+                          <span className="font-heading font-semibold text-sm">Recycled & Household Items</span>
+                          <Badge variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20">
+                            {recycledResources.length}
+                          </Badge>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent>
-                        <div className="space-y-3 pt-2">
+                        <div className="space-y-2 pt-2 pl-11">
                           {recycledResources.map((resource, idx) => (
-                            <Card key={idx} className="hover-elevate" data-testid={`card-recycled-resource-${idx}`}>
-                              <CardContent className="p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex-1">
-                                    <h4 className="font-semibold text-sm mb-1">{resource.title}</h4>
-                                    <p className="text-sm text-muted-foreground">{resource.description}</p>
-                                  </div>
-                                  {resource.link && (
-                                    <Button variant="ghost" size="sm" asChild className="shrink-0">
-                                      <a href={resource.link} target="_blank" rel="noopener noreferrer" data-testid={`link-recycled-resource-${idx}`}>
-                                        <ExternalLink className="w-4 h-4" />
-                                      </a>
-                                    </Button>
-                                  )}
+                            <div key={idx} className="group p-3 rounded-lg border border-primary/10 hover-elevate bg-card" data-testid={`card-recycled-resource-${idx}`}>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-sm mb-0.5">{resource.title}</h4>
+                                  <p className="text-xs text-muted-foreground">{resource.description}</p>
                                 </div>
-                              </CardContent>
-                            </Card>
+                                {resource.link && (
+                                  <Button variant="ghost" size="sm" asChild className="shrink-0 h-8 w-8 p-0">
+                                    <a href={resource.link} target="_blank" rel="noopener noreferrer" data-testid={`link-recycled-resource-${idx}`}>
+                                      <ExternalLink className="w-3.5 h-3.5" />
+                                    </a>
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
                           ))}
                         </div>
                       </AccordionContent>

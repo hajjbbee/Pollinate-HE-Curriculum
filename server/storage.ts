@@ -55,6 +55,7 @@ export interface IStorage {
   // Upcoming Events
   createEvent(event: InsertUpcomingEvent): Promise<UpcomingEvent>;
   getUpcomingEvents(familyId: string, startDate?: Date, endDate?: Date): Promise<UpcomingEvent[]>;
+  deleteEvent(eventId: string): Promise<void>;
   deleteEventsByFamily(familyId: string): Promise<void>;
   deleteOldEvents(beforeDate: Date): Promise<void>;
 
@@ -258,6 +259,10 @@ export class DatabaseStorage implements IStorage {
       .orderBy(upcomingEvents.eventDate);
     
     return results;
+  }
+
+  async deleteEvent(eventId: string): Promise<void> {
+    await db.delete(upcomingEvents).where(eq(upcomingEvents.id, eventId));
   }
 
   async deleteEventsByFamily(familyId: string): Promise<void> {

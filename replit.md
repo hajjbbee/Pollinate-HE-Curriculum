@@ -23,14 +23,16 @@ Preferred communication style: Simple, everyday language.
   - Resources optimized to fit within OpenRouter free tier token limits (max_tokens: 1600)
   - Prioritizes recycled/household items as key selling point for budget-conscious families
   
-- **Upcoming Events Feature**: Real-time local educational events integrated into weekly curriculum
-  - Multi-source event discovery: Eventbrite API, Google Places, and Meetup.com
-  - Weekly theme matching: 3-8 events per week tailored to curriculum theme
+- **Upcoming Events Feature**: Real-time local educational events with smart caching
+  - **6-Hour Smart Caching**: Events cached for 6 hours, then automatically refreshed
+  - **14-Day Window**: Always shows events happening in the next 14 days (never stale past events)
+  - Multi-source event discovery: Eventbrite API and Google Places
+  - Theme matching: Events matched to curriculum week themes
   - Event details: name, date/time, location, drive time, cost (highlighting FREE), age range, and "why it fits"
-  - Database caching with smart refresh to minimize API calls
-  - Beautiful UI card with calendar icons and direct ticket/registration links
-  - New table: `upcoming_events` with fields for all event metadata
-  - API endpoint: `/api/events/week/:weekNumber` for fetching weekly events
+  - Beautiful UI with golden yellow calendar icons and subtle backgrounds
+  - Individual event cards with icon backgrounds (primary/10 opacity)
+  - Database table: `upcoming_events` with `cachedAt` timestamps
+  - API endpoint: `/api/events/week/:weekNumber` fetches next 14 days regardless of week viewed
   
 - **Rebranding**: Complete rebrand from "Evergreen" to "Pollinate - Home Education Curriculum"
   - Golden yellow color scheme (HSL 45°) replacing forest green throughout

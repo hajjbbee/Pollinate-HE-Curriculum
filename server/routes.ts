@@ -725,39 +725,72 @@ router.get("/api/events/week/:weekNumber", isAuthenticated, async (req: Request,
       return res.status(404).json({ error: "Family not found" });
     }
 
-    // Calculate week date range
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() + (weekNumber - 1) * 7);
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + 7);
-
-    // Get cached events or fetch new ones
-    let events = await storage.getUpcomingEvents(family.id, startDate, endDate);
+    const now = new Date();
+    const CACHE_DURATION_MS = 6 * 60 * 60 * 1000; // 6 hours
     
-    if (events.length === 0) {
-      // No cached events, fetch from APIs
+    // ALWAYS fetch events for the next 14 days, regardless of which week is being viewed
+    const next14DaysStart = new Date();
+    const next14DaysEnd = new Date();
+    next14DaysEnd.setDate(next14DaysEnd.getDate() + 14);
+
+    // Get all cached events for this family in the next 14 days
+    let cachedEvents = await storage.getUpcomingEvents(family.id, next14DaysStart, next14DaysEnd);
+    
+    // Determine if we need to refresh the cache
+    let shouldRefreshCache = false;
+    
+    if (cachedEvents.length === 0) {
+      shouldRefreshCache = true;
       console.log(`🎪 No cached events for week ${weekNumber}, discovering new events...`);
+    } else {
+      // Check if cache is stale (any event older than 6 hours)
+      const oldestCacheTime = Math.min(...cachedEvents.map(e => {
+        const cachedAt = e.cachedAt ? new Date(e.cachedAt).getTime() : 0;
+        return cachedAt;
+      }));
+      
+      if (now.getTime() - oldestCacheTime > CACHE_DURATION_MS) {
+        shouldRefreshCache = true;
+        console.log(`♻️  Cache stale for week ${weekNumber} (age: ${Math.round((now.getTime() - oldestCacheTime) / 1000 / 60)} minutes), refreshing...`);
+        
+        // Delete ALL cached events for this week before refreshing
+        for (const event of cachedEvents) {
+          try {
+            await storage.deleteEvent(event.id);
+          } catch (err) {
+            console.error("Error deleting stale event:", err);
+          }
+        }
+      } else {
+        console.log(`✨ Using cached events for week ${weekNumber} (age: ${Math.round((now.getTime() - oldestCacheTime) / 1000 / 60)} minutes)`);
+      }
+    }
+
+    // Refresh cache if needed
+    if (shouldRefreshCache) {
       const { discoverWeeklyEvents } = await import("./events");
       const curriculum = await storage.getActiveCurriculum(family.id);
       
       if (curriculum) {
         const curriculumData = curriculum.curriculumData as any;
         const weekTheme = curriculumData.weeks[weekNumber - 1]?.familyTheme || "education";
-        console.log(`🎯 Week ${weekNumber} theme: "${weekTheme}"`);
+        console.log(`🎯 Week ${weekNumber} theme: "${weekTheme}" (fetching events for next 14 days)`);
         
         const radiusKm = (family.travelRadiusMinutes / 60) * 50; // Assume 50 km/h average speed
+        
+        // Fetch events for the next 14 days matching this week's theme
         const newEvents = await discoverWeeklyEvents(
           family.id,
           family.latitude,
           family.longitude,
           radiusKm,
           weekTheme,
-          startDate
+          next14DaysStart
         );
 
-        console.log(`📅 Discovered ${newEvents.length} events for week ${weekNumber}`);
+        console.log(`📅 Discovered ${newEvents.length} events for next 14 days (theme: ${weekTheme})`);
 
-        // Save to database
+        // Save to database with current timestamp
         for (const event of newEvents) {
           try {
             await storage.createEvent(event as any);
@@ -766,16 +799,23 @@ router.get("/api/events/week/:weekNumber", isAuthenticated, async (req: Request,
           }
         }
 
-        events = await storage.getUpcomingEvents(family.id, startDate, endDate);
-        console.log(`✅ Cached ${events.length} events for week ${weekNumber}`);
+        // Reload from database to get fresh cached events
+        cachedEvents = await storage.getUpcomingEvents(family.id, next14DaysStart, next14DaysEnd);
+        console.log(`✅ Cached ${cachedEvents.length} events for next 14 days (valid for 6 hours)`);
       } else {
         console.log(`⚠️ No curriculum found for family ${family.id}`);
       }
-    } else {
-      console.log(`✨ Returning ${events.length} cached events for week ${weekNumber}`);
     }
 
-    res.json(events);
+    // Events are already filtered to next 14 days by the storage query
+    // Just ensure they haven't passed yet
+    const upcomingEvents = cachedEvents.filter(e => {
+      const eventDate = new Date(e.eventDate);
+      return eventDate >= now;
+    });
+
+    console.log(`📤 Returning ${upcomingEvents.length} upcoming events (filtered from ${cachedEvents.length} cached)`);
+    res.json(upcomingEvents);
   } catch (error: any) {
     console.error("Error fetching events:", error);
     res.status(500).json({ error: error.message });
