@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Sparkles, RefreshCw, Calendar, TrendingUp, MapPin, BookOpen, ExternalLink, Users, Zap, CalendarDays, Clock, DollarSign, Leaf, Gift, Copy, CheckCircle2, ShoppingBasket, Tag, ChevronRight } from "lucide-react";
+import { Sparkles, RefreshCw, Calendar, TrendingUp, MapPin, BookOpen, ExternalLink, Users, Zap, CalendarDays, Clock, DollarSign, Leaf, Gift, Copy, CheckCircle2, ShoppingBasket, Tag, ChevronRight, Settings } from "lucide-react";
 import { SiFacebook } from "react-icons/si";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { CurriculumData, WeekCurriculum, UpcomingEvent, JournalEntry } from "@shared/schema";
@@ -343,6 +343,12 @@ export default function Dashboard() {
                   </Tooltip>
                 </div>
               )}
+              <Link href="/family-settings">
+                <Button variant="default" size="sm" data-testid="button-edit-family">
+                  <Settings className="w-4 h-4 mr-2" />
+                  <span className="hidden md:inline">Edit Family</span>
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
