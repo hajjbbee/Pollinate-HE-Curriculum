@@ -51,6 +51,7 @@ export const families = pgTable("families", {
   longitude: real("longitude").notNull(),
   travelRadiusMinutes: integer("travel_radius_minutes").notNull().default(30),
   flexForHighInterest: boolean("flex_for_high_interest").notNull().default(true),
+  lastEventsFetchedAt: timestamp("last_events_fetched_at"), // Global cache timestamp for API events
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -121,7 +122,21 @@ export const subscriptions = pgTable("subscriptions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Upcoming events table (from Eventbrite, Meetup, Google Places)
+// Homeschool groups table
+export const homeschoolGroups = pgTable("homeschool_groups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  familyId: varchar("family_id").notNull().references(() => families.id, { onDelete: "cascade" }),
+  groupId: varchar("group_id").notNull(), // Extracted from Facebook URL
+  groupName: varchar("group_name").notNull(),
+  groupUrl: text("group_url").notNull(),
+  syncStatus: varchar("sync_status").notNull().default("pending"), // pending, syncing, synced, error
+  lastSyncedAt: timestamp("last_synced_at"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Upcoming events table (from Eventbrite, Google Places, Facebook Groups)
 export const upcomingEvents = pgTable("upcoming_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   familyId: varchar("family_id").notNull().references(() => families.id, { onDelete: "cascade" }),
@@ -138,8 +153,10 @@ export const upcomingEvents = pgTable("upcoming_events", {
   description: text("description"),
   whyItFits: text("why_it_fits"), // One-sentence explanation
   ticketUrl: text("ticket_url"),
-  source: varchar("source").notNull(), // "eventbrite", "meetup", "google_places"
+  source: varchar("source").notNull(), // "api", "facebook_group"
   externalId: varchar("external_id"), // ID from source API
+  groupId: varchar("group_id"), // For facebook_group events
+  groupName: varchar("group_name"), // For facebook_group events  
   cachedAt: timestamp("cached_at").defaultNow(),
 });
 
@@ -161,6 +178,7 @@ export const familiesRelations = relations(families, ({ one, many }) => ({
   journalEntries: many(journalEntries),
   localOpportunities: many(localOpportunities),
   upcomingEvents: many(upcomingEvents),
+  homeschoolGroups: many(homeschoolGroups),
   subscription: one(subscriptions, {
     fields: [families.id],
     references: [subscriptions.familyId],
@@ -214,6 +232,13 @@ export const upcomingEventsRelations = relations(upcomingEvents, ({ one }) => ({
   }),
 }));
 
+export const homeschoolGroupsRelations = relations(homeschoolGroups, ({ one }) => ({
+  family: one(families, {
+    fields: [homeschoolGroups.familyId],
+    references: [families.id],
+  }),
+}));
+
 // Insert schemas
 export const insertFamilySchema = createInsertSchema(families).omit({
   id: true,
@@ -254,6 +279,12 @@ export const insertUpcomingEventSchema = createInsertSchema(upcomingEvents).omit
   cachedAt: true,
 });
 
+export const insertHomeschoolGroupSchema = createInsertSchema(homeschoolGroups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -278,6 +309,9 @@ export type Subscription = typeof subscriptions.$inferSelect;
 
 export type InsertUpcomingEvent = z.infer<typeof insertUpcomingEventSchema>;
 export type UpcomingEvent = typeof upcomingEvents.$inferSelect;
+
+export type InsertHomeschoolGroup = z.infer<typeof insertHomeschoolGroupSchema>;
+export type HomeschoolGroup = typeof homeschoolGroups.$inferSelect;
 
 // Curriculum JSON structure types
 export interface WeekActivity {
