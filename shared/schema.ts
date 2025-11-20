@@ -306,12 +306,20 @@ export interface ChildWeekPlan {
   masteryUpdates: Record<string, string>;
 }
 
+export interface Resource {
+  title: string;
+  link?: string;
+  description: string;
+  category: "free" | "low-cost" | "recycled";
+}
+
 export interface WeekCurriculum {
   weekNumber: number;
   familyTheme: string;
   familyActivities: string[];
   localOpportunities: WeekActivity[];
   children: ChildWeekPlan[];
+  resources: Resource[];
 }
 
 export interface CurriculumData {
