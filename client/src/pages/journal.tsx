@@ -1,97 +1,179 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import DOMPurify from "dompurify";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ObjectUploader } from "@/components/ObjectUploader";
-import { RichTextEditor } from "@/components/RichTextEditor";
-import { Calendar, Image as ImageIcon, BookOpen, Plus } from "lucide-react";
+import { BookOpen, Star, Smile, Meh, ChevronDown, ChevronUp, Sparkles, Mic, Image as ImageIcon } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { format } from "date-fns";
 import type { UploadResult } from "@uppy/core";
-import type { JournalEntry } from "@shared/schema";
+import type { WeekCurriculum } from "@shared/schema";
 
-const journalEntrySchema = z.object({
-  childId: z.string().min(1, "Please select a child"),
-  entryDate: z.string().min(1, "Date is required"),
-  content: z.string().min(10, "Please write at least 10 characters"),
-});
+type ReactionType = "loved" | "okay" | "not_today";
 
-type JournalEntryForm = z.infer<typeof journalEntrySchema>;
+interface ActivityFeedback {
+  activityId: string;
+  reaction?: ReactionType;
+  notes?: string;
+  photoUrl?: string;
+  voiceNoteUrl?: string;
+}
 
 export default function Journal() {
   const { toast } = useToast();
   const { user } = useAuth();
-  const [uploadedPhotos, setUploadedPhotos] = useState<string[]>([]);
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, ActivityFeedback>>({});
+  const [emergingInterestsOpen, setEmergingInterestsOpen] = useState(true);
+  const [emergingTitle, setEmergingTitle] = useState("");
+  const [emergingDescription, setEmergingDescription] = useState("");
+  const [emergingPhotoUrl, setEmergingPhotoUrl] = useState("");
+
+  const todayDate = format(new Date(), "yyyy-MM-dd");
 
   const { data: children, isLoading: childrenLoading } = useQuery({
     queryKey: ["/api/children"],
-    retry: false,
     enabled: !!user,
   });
 
-  const { data: entries, isLoading: entriesLoading } = useQuery<JournalEntry[]>({
-    queryKey: ["/api/journal"],
-    retry: false,
+  const { data: curriculumResponse, isLoading: curriculumLoading } = useQuery({
+    queryKey: ["/api/curriculum"],
     enabled: !!user,
   });
 
-  const form = useForm<JournalEntryForm>({
-    resolver: zodResolver(journalEntrySchema),
-    defaultValues: {
-      childId: "",
-      entryDate: new Date().toISOString().split("T")[0],
-      content: "",
-    },
+  const { data: dailyCompletionData } = useQuery<{ completed: number; total: number; completedIds: string[] }>({
+    queryKey: ["/api/daily-completion", todayDate],
+    enabled: !!user,
   });
 
-  const { mutate: createEntry, isPending } = useMutation({
-    mutationFn: async (data: JournalEntryForm & { photoUrls: string[] }) => {
-      const response = await apiRequest("POST", "/api/journal", data);
-      return await response.json();
+  const completedIds = dailyCompletionData?.completedIds || [];
+  const hasCompletedActivities = completedIds.length > 0;
+
+  // Auto-open emerging interests when no completed activities
+  useState(() => {
+    setEmergingInterestsOpen(!hasCompletedActivities);
+  });
+
+  const saveFeedbackMutation = useMutation({
+    mutationFn: async (data: { childId: string; activityId: string; reaction: ReactionType; notes?: string; photoUrl?: string }) => {
+      return await apiRequest("POST", "/api/activity-feedback", {
+        ...data,
+        activityDate: todayDate,
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/journal"] });
-      form.reset({
-        childId: "",
-        entryDate: new Date().toISOString().split("T")[0],
-        content: "",
-      });
-      setUploadedPhotos([]);
       toast({
-        title: "Entry Saved",
-        description: "Journal entry has been saved successfully!",
+        title: "Feedback saved!",
+        description: "Activity feedback has been recorded.",
       });
     },
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Session Expired",
-          description: "Please sign in again.",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
+    onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to save journal entry",
+        title: "Error saving feedback",
+        description: error.message || "Please try again.",
         variant: "destructive",
       });
     },
   });
+
+  const saveEmergingInterestMutation = useMutation({
+    mutationFn: async (data: { childId: string; title: string; description?: string; photoUrl?: string }) => {
+      return await apiRequest("POST", "/api/emerging-interests", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Interest captured!",
+        description: "Emerging interest has been added to your child's profile.",
+      });
+      setEmergingTitle("");
+      setEmergingDescription("");
+      setEmergingPhotoUrl("");
+      queryClient.invalidateQueries({ queryKey: ["/api/emerging-interests"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error saving interest",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleReactionClick = (activityId: string, childId: string, reaction: ReactionType) => {
+    const currentFeedback = feedbackMap[activityId] || {};
+    const newReaction = currentFeedback.reaction === reaction ? undefined : reaction;
+    
+    setFeedbackMap(prev => ({
+      ...prev,
+      [activityId]: {
+        ...currentFeedback,
+        activityId,
+        reaction: newReaction,
+      },
+    }));
+
+    if (newReaction) {
+      saveFeedbackMutation.mutate({
+        childId,
+        activityId,
+        reaction: newReaction,
+        notes: currentFeedback.notes,
+        photoUrl: currentFeedback.photoUrl,
+      });
+    }
+  };
+
+  const handleUploadComplete = async (activityId: string, result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    const uploadedUrls = result.successful?.map((file) => file.uploadURL) || [];
+    if (uploadedUrls.length > 0) {
+      const photoUrl = uploadedUrls[0];
+      
+      // Set photo ACL
+      try {
+        await apiRequest("PUT", "/api/journal-photos", { photoURL: photoUrl });
+      } catch (error) {
+        console.error("Failed to set photo ACL:", error);
+      }
+
+      setFeedbackMap(prev => ({
+        ...prev,
+        [activityId]: {
+          ...(prev[activityId] || { activityId }),
+          photoUrl,
+        },
+      }));
+
+      toast({
+        title: "Photo uploaded!",
+        description: "Photo has been added to your feedback.",
+      });
+    }
+  };
+
+  const handleEmergingPhotoUpload = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    const uploadedUrls = result.successful?.map((file) => file.uploadURL) || [];
+    if (uploadedUrls.length > 0) {
+      const photoUrl = uploadedUrls[0];
+      
+      try {
+        await apiRequest("PUT", "/api/journal-photos", { photoURL: photoUrl });
+      } catch (error) {
+        console.error("Failed to set photo ACL:", error);
+      }
+
+      setEmergingPhotoUrl(photoUrl || "");
+      toast({
+        title: "Photo uploaded!",
+        description: "Photo has been added.",
+      });
+    }
+  };
 
   const handleGetUploadParameters = async () => {
     const response = await apiRequest("POST", "/api/objects/upload", {});
@@ -102,203 +184,279 @@ export default function Journal() {
     };
   };
 
-  const handleUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
-    const uploadedUrls = result.successful.map((file) => file.uploadURL);
-    setUploadedPhotos((prev) => [...prev, ...uploadedUrls]);
-
-    for (const url of uploadedUrls) {
-      try {
-        await apiRequest("PUT", "/api/journal-photos", { photoURL: url });
-      } catch (error) {
-        console.error("Failed to set photo ACL:", error);
-      }
+  const handleSaveEmergingInterest = () => {
+    const childrenArray = children as any[] | undefined;
+    if (!emergingTitle.trim() || !childrenArray || childrenArray.length === 0) {
+      toast({
+        title: "Missing information",
+        description: "Please add a title for the interest.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    toast({
-      title: "Photos Uploaded",
-      description: `${uploadedUrls.length} photo(s) uploaded successfully!`,
+    // For now, assign to first child (in future, could let user select)
+    const childId = childrenArray[0].id;
+    
+    saveEmergingInterestMutation.mutate({
+      childId,
+      title: emergingTitle,
+      description: emergingDescription,
+      photoUrl: emergingPhotoUrl,
     });
   };
 
-  const onSubmit = (data: JournalEntryForm) => {
-    createEntry({ ...data, photoUrls: uploadedPhotos });
-  };
-
-  if (childrenLoading || entriesLoading) {
+  if (childrenLoading || curriculumLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-3xl mx-auto px-4 py-8">
         <Skeleton className="h-12 w-64 mb-8" />
         <Skeleton className="h-96 w-full" />
       </div>
     );
   }
 
-  const getChildName = (childId: string) => {
-    return children?.find((c: any) => c.id === childId)?.name || "Unknown";
+  const curriculumData = (curriculumResponse as any)?.curriculum?.curriculumData as { weeks: WeekCurriculum[] } | undefined;
+
+  // Get today's completed activities
+  const getCompletedActivities = () => {
+    const childrenArray = children as any[] | undefined;
+    if (!curriculumData || !childrenArray) return [];
+
+    const activities: Array<{ id: string; childId: string; childName: string; activityText: string; type: string }> = [];
+
+    // Parse completed IDs
+    completedIds.forEach(id => {
+      if (id === "family-activity") {
+        activities.push({
+          id: "family-activity",
+          childId: "family",
+          childName: "Family",
+          activityText: "Family Activity",
+          type: "family",
+        });
+      } else if (id.startsWith("child-")) {
+        const childId = id.replace("child-", "");
+        const child = childrenArray.find((c: any) => c.id === childId);
+        if (child) {
+          activities.push({
+            id,
+            childId: child.id,
+            childName: child.name,
+            activityText: `${child.name}'s Activity`,
+            type: "individual",
+          });
+        }
+      }
+    });
+
+    return activities;
+  };
+
+  const completedActivities = getCompletedActivities();
+
+  const reactionIcons: Record<ReactionType, { icon: any; label: string; emoji: string }> = {
+    loved: { icon: Star, label: "Loved it", emoji: "🌟" },
+    okay: { icon: Smile, label: "Okay", emoji: "🙂" },
+    not_today: { icon: Meh, label: "Not today", emoji: "😅" },
   };
 
   return (
-    <div className="min-h-screen bg-background pb-12">
+    <div className="min-h-screen bg-background pb-24">
       <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
               <BookOpen className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-3xl font-heading font-bold text-foreground">Learning Journal</h1>
-              <p className="text-muted-foreground">Document your children's daily progress</p>
+              <h1 className="text-3xl font-heading font-bold text-foreground">Daily Journal</h1>
+              <p className="text-muted-foreground">Quick feedback on today's learning</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="font-heading flex items-center gap-2">
-                  <Plus className="w-5 h-5 text-primary" />
-                  New Entry
-                </CardTitle>
-                <CardDescription>Add today's learning highlights</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="childId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Child</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-child">
-                                <SelectValue placeholder="Select child" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {children?.map((child: any) => (
-                                <SelectItem key={child.id} value={child.id}>
-                                  {child.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="entryDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Date</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} data-testid="input-date" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="content"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Entry</FormLabel>
-                          <FormControl>
-                            <RichTextEditor
-                              content={field.value}
-                              onChange={field.onChange}
-                              placeholder="What did they learn today? What excited them?"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div>
-                      <Label className="text-sm font-medium mb-2 block">Photos</Label>
-                      <ObjectUploader
-                        maxNumberOfFiles={5}
-                        maxFileSize={10485760}
-                        onGetUploadParameters={handleGetUploadParameters}
-                        onComplete={handleUploadComplete}
-                        buttonClassName="w-full"
-                      >
-                        <ImageIcon className="w-4 h-4 mr-2" />
-                        Add Photos ({uploadedPhotos.length})
-                      </ObjectUploader>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 mt-8 space-y-6">
+        {/* Completed Activities Feedback */}
+        {completedActivities.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-heading text-xl">How did today go?</CardTitle>
+              <CardDescription>Quick reactions to today's completed activities</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {completedActivities.map((activity) => {
+                const feedback = feedbackMap[activity.id] || {};
+                
+                return (
+                  <div key={activity.id} className="border border-border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        {activity.childName}
+                      </Badge>
+                      <span className="text-sm font-medium text-foreground">{activity.activityText}</span>
                     </div>
 
-                    <Button type="submit" disabled={isPending} className="w-full" data-testid="button-save-entry">
-                      {isPending ? "Saving..." : "Save Entry"}
-                    </Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-          </div>
+                    {/* Emoji Reactions */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {(Object.keys(reactionIcons) as ReactionType[]).map((reactionType) => {
+                        const reaction = reactionIcons[reactionType];
+                        const isSelected = feedback.reaction === reactionType;
+                        const IconComponent = reaction.icon;
 
-          <div className="lg:col-span-2">
-            <h2 className="text-xl font-heading font-semibold mb-4">Recent Entries</h2>
-            {entries && entries.length > 0 ? (
-              <div className="space-y-4">
-                {entries.map((entry) => (
-                  <Card key={entry.id} className="hover-elevate">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="font-heading text-lg">
-                          {getChildName(entry.childId)}
-                        </CardTitle>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="w-4 h-4" />
-                          {new Date(entry.entryDate).toLocaleDateString()}
-                        </div>
+                        return (
+                          <Button
+                            key={reactionType}
+                            variant={isSelected ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleReactionClick(activity.id, activity.childId, reactionType)}
+                            className="gap-1"
+                            data-testid={`button-reaction-${reactionType}-${activity.id}`}
+                          >
+                            <span className="text-base">{reaction.emoji}</span>
+                            <span className="text-xs">{reaction.label}</span>
+                          </Button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Optional Photo Upload */}
+                    {feedback.photoUrl ? (
+                      <div className="relative">
+                        <img 
+                          src={feedback.photoUrl} 
+                          alt="Activity photo" 
+                          className="w-full max-w-xs rounded-lg border border-border"
+                        />
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div 
-                        className="prose prose-sm max-w-none text-muted-foreground" 
-                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(entry.content) }}
+                    ) : (
+                      <ObjectUploader
+                        onGetUploadParameters={handleGetUploadParameters}
+                        onComplete={(result) => handleUploadComplete(activity.id, result)}
+                        maxNumberOfFiles={1}
+                        buttonClassName="gap-2"
+                      >
+                        <ImageIcon className="w-4 h-4" />
+                        Add Photo
+                      </ObjectUploader>
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Emerging Interests Section */}
+        <Collapsible open={emergingInterestsOpen} onOpenChange={setEmergingInterestsOpen}>
+          <Card className="border-2 border-primary/30">
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover-elevate active-elevate-2" data-testid="button-toggle-emerging-interests">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="w-6 h-6 text-primary" />
+                    <div>
+                      <CardTitle className="font-heading text-xl">Anything else today?</CardTitle>
+                      <CardDescription>Capture spontaneous obsessions (completely optional)</CardDescription>
+                    </div>
+                  </div>
+                  {emergingInterestsOpen ? (
+                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="space-y-4 pt-0">
+                <p className="text-sm text-muted-foreground italic">
+                  My kid suddenly cared about whales / baking / ancient Greece / the neighbor's cat…
+                </p>
+
+                <Separator />
+
+                {/* Smart Suggestions (placeholder for AI-generated suggestions) */}
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="cursor-pointer hover-elevate" data-testid="suggestion-chip-hamsters">
+                    Hamsters again? 🐹
+                  </Badge>
+                  <Badge variant="outline" className="cursor-pointer hover-elevate" data-testid="suggestion-chip-lego">
+                    More LEGO volcanoes? 🌋
+                  </Badge>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      What was it? <span className="text-muted-foreground">(required)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={emergingTitle}
+                      onChange={(e) => setEmergingTitle(e.target.value)}
+                      placeholder="e.g., 'Dinosaurs', 'Making slime', 'Ancient Egypt'"
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      data-testid="input-emerging-title"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      Tell me more <span className="text-muted-foreground">(optional)</span>
+                    </label>
+                    <Textarea
+                      value={emergingDescription}
+                      onChange={(e) => setEmergingDescription(e.target.value)}
+                      placeholder="What exactly got them excited? How long did they spend on it?"
+                      className="min-h-[80px]"
+                      data-testid="textarea-emerging-description"
+                    />
+                  </div>
+
+                  {/* Photo Upload */}
+                  {emergingPhotoUrl ? (
+                    <div className="relative">
+                      <img 
+                        src={emergingPhotoUrl} 
+                        alt="Interest photo" 
+                        className="w-full max-w-xs rounded-lg border border-border"
                       />
-                      {entry.photoUrls && entry.photoUrls.length > 0 && (
-                        <div className="grid grid-cols-3 gap-2 mt-4">
-                          {entry.photoUrls.map((url, idx) => (
-                            <div
-                              key={idx}
-                              className="aspect-square rounded-lg overflow-hidden bg-muted"
-                            >
-                              <img
-                                src={url}
-                                alt={`Photo ${idx + 1}`}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No journal entries yet. Start documenting your learning journey!</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEmergingPhotoUrl("")}
+                        className="mt-2"
+                      >
+                        Remove Photo
+                      </Button>
+                    </div>
+                  ) : (
+                    <ObjectUploader
+                      onGetUploadParameters={handleGetUploadParameters}
+                      onComplete={handleEmergingPhotoUpload}
+                      maxNumberOfFiles={1}
+                      buttonClassName="gap-2"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      Add Photo
+                    </ObjectUploader>
+                  )}
+
+                  <Button 
+                    onClick={handleSaveEmergingInterest}
+                    disabled={!emergingTitle.trim() || saveEmergingInterestMutation.isPending}
+                    className="w-full gap-2"
+                    data-testid="button-save-emerging-interest"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {saveEmergingInterestMutation.isPending ? "Saving..." : "Capture This Interest"}
+                  </Button>
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
       </div>
     </div>
   );
