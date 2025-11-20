@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sparkles, RefreshCw, Calendar, TrendingUp, MapPin, BookOpen, ExternalLink, Users, Zap, CalendarDays, Clock, DollarSign, Leaf, Gift, Copy, CheckCircle2, ShoppingBasket, Tag } from "lucide-react";
+import { SiFacebook } from "react-icons/si";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { CurriculumData, WeekCurriculum, UpcomingEvent } from "@shared/schema";
 import { Link } from "wouter";
@@ -447,10 +448,10 @@ export default function Dashboard() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-primary" />
-              <CardTitle className="font-heading">Happening Soon</CardTitle>
+              <CardTitle className="font-heading">Local Events</CardTitle>
             </div>
             <CardDescription>
-              Local events in the next 14 days matching this week's theme (refreshed every 6 hours)
+              Upcoming events in your area in the next 14 days matching this week's theme (refreshed every 6 hours)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -464,80 +465,174 @@ export default function Dashboard() {
               <div className="text-center py-8 text-muted-foreground">
                 <p>Unable to load events. Please try again later.</p>
               </div>
-            ) : weeklyEvents.length === 0 ? (
+            ) : weeklyEvents.filter((e: UpcomingEvent) => e.source === "api").length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Calendar className="w-12 h-12 mx-auto mb-3 opacity-20 text-primary" />
-                <p className="font-medium">No upcoming events found</p>
+                <p className="font-medium">No upcoming local events found</p>
                 <p className="text-sm mt-1">Check back later as we continuously discover new opportunities!</p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
-                {weeklyEvents.slice(0, 8).map((event, idx) => (
-                  <Card key={event.id} className="hover-elevate active-elevate-2 border-primary/10">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Calendar className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-heading font-semibold text-sm mb-1 pr-2">{event.eventName}</h4>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(event.eventDate), "EEE, MMM d 'at' h:mm a")}
-                          </p>
-                        </div>
-                        {event.cost === "FREE" && (
-                          <Badge variant="default" className="bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20 shrink-0">
-                            FREE
-                          </Badge>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-1.5 mb-3">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <MapPin className="w-3 h-3 shrink-0 text-primary/60" />
-                          <span className="truncate">{event.location}</span>
-                          {event.driveMinutes && (
-                            <Badge variant="outline" className="text-xs shrink-0 border-primary/20">
-                              {event.driveMinutes} min
+                {weeklyEvents
+                  .filter((e: UpcomingEvent) => e.source === "api")
+                  .slice(0, 8)
+                  .map((event, idx) => (
+                    <Card key={event.id} className="hover-elevate active-elevate-2 border-primary/10">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Calendar className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-heading font-semibold text-sm mb-1 pr-2">{event.eventName}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(event.eventDate), "EEE, MMM d 'at' h:mm a")}
+                            </p>
+                          </div>
+                          {event.cost === "FREE" && (
+                            <Badge variant="default" className="bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20 shrink-0">
+                              FREE
                             </Badge>
                           )}
                         </div>
-                        {event.cost !== "FREE" && (
-                          <div className="flex items-center gap-2 text-xs">
-                            <DollarSign className="w-3 h-3 shrink-0 text-primary/60" />
-                            <span className="font-semibold text-primary">{event.cost}</span>
+                        
+                        <div className="space-y-1.5 mb-3">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <MapPin className="w-3 h-3 shrink-0 text-primary/60" />
+                            <span className="truncate">{event.location}</span>
+                            {event.driveMinutes && (
+                              <Badge variant="outline" className="text-xs shrink-0 border-primary/20">
+                                {event.driveMinutes} min
+                              </Badge>
+                            )}
                           </div>
-                        )}
-                        {event.ageRange && (
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-xs">
-                              Ages {event.ageRange}
-                            </Badge>
-                          </div>
-                        )}
-                      </div>
+                          {event.cost !== "FREE" && (
+                            <div className="flex items-center gap-2 text-xs">
+                              <DollarSign className="w-3 h-3 shrink-0 text-primary/60" />
+                              <span className="font-semibold text-primary">{event.cost}</span>
+                            </div>
+                          )}
+                          {event.ageRange && (
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                Ages {event.ageRange}
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
 
-                      {event.whyItFits && (
-                        <p className="text-xs text-muted-foreground mb-3 italic border-l-2 border-primary/30 pl-2.5 py-0.5">
-                          {event.whyItFits}
-                        </p>
-                      )}
+                        {event.whyItFits && (
+                          <p className="text-xs text-muted-foreground mb-3 italic border-l-2 border-primary/30 pl-2.5 py-0.5">
+                            {event.whyItFits}
+                          </p>
+                        )}
 
-                      {event.ticketUrl && (
-                        <Button variant="outline" size="sm" className="w-full hover-elevate" asChild>
-                          <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer" data-testid={`link-event-${idx}`}>
-                            <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                            {event.source === "eventbrite" ? "Get Tickets" : "Learn More"}
-                          </a>
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
+                        {event.ticketUrl && (
+                          <Button variant="outline" size="sm" className="w-full hover-elevate" asChild>
+                            <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer" data-testid={`link-event-${idx}`}>
+                              <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                              Learn More
+                            </a>
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
               </div>
             )}
           </CardContent>
         </Card>
+
+        {weeklyEvents.filter((e: UpcomingEvent) => e.source === "facebook_group").length > 0 && (
+          <Card className="mt-6">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded bg-[#1877F2] flex items-center justify-center">
+                  <SiFacebook className="w-3 h-3 text-white" />
+                </div>
+                <CardTitle className="font-heading">From Your Groups</CardTitle>
+              </div>
+              <CardDescription>
+                Events you've added from your homeschool Facebook groups
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-4">
+                {weeklyEvents
+                  .filter((e: UpcomingEvent) => e.source === "facebook_group")
+                  .slice(0, 8)
+                  .map((event, idx) => (
+                    <Card key={event.id} className="hover-elevate active-elevate-2 border-[#1877F2]/10">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="shrink-0 w-10 h-10 rounded-lg bg-[#1877F2]/10 flex items-center justify-center">
+                            <SiFacebook className="w-5 h-5 text-[#1877F2]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-heading font-semibold text-sm mb-1 pr-2">{event.eventName}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(event.eventDate), "EEE, MMM d 'at' h:mm a")}
+                            </p>
+                            {event.groupName && (
+                              <p className="text-xs text-[#1877F2] mt-0.5 truncate">
+                                {event.groupName}
+                              </p>
+                            )}
+                          </div>
+                          {event.cost === "FREE" && (
+                            <Badge variant="default" className="bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20 shrink-0">
+                              FREE
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        <div className="space-y-1.5 mb-3">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <MapPin className="w-3 h-3 shrink-0 text-[#1877F2]/60" />
+                            <span className="truncate">{event.location}</span>
+                          </div>
+                          {event.cost !== "FREE" && (
+                            <div className="flex items-center gap-2 text-xs">
+                              <DollarSign className="w-3 h-3 shrink-0 text-[#1877F2]/60" />
+                              <span className="font-semibold text-[#1877F2]">{event.cost}</span>
+                            </div>
+                          )}
+                          {event.ageRange && (
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                Ages {event.ageRange}
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+
+                        {event.description && (
+                          <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                            {event.description}
+                          </p>
+                        )}
+
+                        {event.whyItFits && (
+                          <p className="text-xs text-muted-foreground mb-3 italic border-l-2 border-[#1877F2]/30 pl-2.5 py-0.5">
+                            {event.whyItFits}
+                          </p>
+                        )}
+
+                        {event.ticketUrl && (
+                          <Button variant="outline" size="sm" className="w-full hover-elevate" asChild>
+                            <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer" data-testid={`link-group-event-${idx}`}>
+                              <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                              Learn More
+                            </a>
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="mt-6">
           <CardHeader>
