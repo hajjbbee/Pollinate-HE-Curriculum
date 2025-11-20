@@ -113,7 +113,7 @@ export default function Onboarding() {
     },
     onSuccess: () => {
       toast({
-        title: "Welcome to Evergreen Curriculum AI!",
+        title: "Welcome to Pollinate!",
         description: "Your family profile has been created. Generating your first curriculum...",
       });
       navigate("/dashboard");
@@ -201,7 +201,10 @@ export default function Onboarding() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-primary" />
-            <h1 className="text-xl font-heading font-bold">Evergreen Curriculum AI</h1>
+            <div>
+              <h1 className="text-xl font-heading font-bold">Pollinate</h1>
+              <p className="text-xs text-muted-foreground">Home Education Curriculum</p>
+            </div>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

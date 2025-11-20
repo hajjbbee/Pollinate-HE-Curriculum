@@ -1,8 +1,8 @@
-# Evergreen Curriculum AI
+# Pollinate - Home Education Curriculum
 
 ## Overview
 
-Evergreen Curriculum AI is a homeschool curriculum SaaS platform that generates personalized, AI-powered 12-week rolling curricula for multi-child families. The platform combines Charlotte Mason, Montessori, unschooling, and project-based learning methodologies to create interest-led educational plans tailored to each child's unique learning profile and local educational opportunities.
+Pollinate is a home education curriculum SaaS platform that generates personalized, AI-powered 12-week rolling curricula for multi-child families. The platform combines Charlotte Mason, Montessori, unschooling, and project-based learning methodologies to create interest-led educational plans tailored to each child's unique learning profile and local educational opportunities.
 
 The application serves families in the United States, Australia, and New Zealand, integrating location-based learning opportunities and adapting to regional differences in measurement systems and geographical contexts.
 

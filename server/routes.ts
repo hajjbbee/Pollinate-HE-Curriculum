@@ -24,7 +24,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
   defaultHeaders: {
     "HTTP-Referer": process.env.REPLIT_DOMAINS || "https://replit.app",
-    "X-Title": "Evergreen Curriculum AI",
+    "X-Title": "Pollinate - Home Education Curriculum",
   },
 });
 

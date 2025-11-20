@@ -44,7 +44,10 @@ function AppSidebar() {
           <div className="px-4 py-6 border-b border-sidebar-border">
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="w-6 h-6 text-sidebar-primary" />
-              <h2 className="text-lg font-heading font-bold">Evergreen</h2>
+              <div>
+                <h2 className="text-lg font-heading font-bold">Pollinate</h2>
+                <p className="text-xs text-sidebar-foreground/70">Home Education Curriculum</p>
+              </div>
             </div>
             {user && (
               <div className="flex items-center gap-3">

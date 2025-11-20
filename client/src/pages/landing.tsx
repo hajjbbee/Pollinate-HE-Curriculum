@@ -9,7 +9,10 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-primary" />
-            <h1 className="text-xl font-heading font-bold text-foreground">Evergreen Curriculum AI</h1>
+            <div>
+              <h1 className="text-xl font-heading font-bold text-foreground">Pollinate</h1>
+              <p className="text-xs text-muted-foreground">Home Education Curriculum</p>
+            </div>
           </div>
           <Button asChild variant="default" data-testid="button-login">
             <a href="/api/login">Sign In</a>
@@ -160,7 +163,7 @@ export default function Landing() {
             Ready to Transform Your Homeschool?
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Join families across three continents using Evergreen Curriculum AI to create meaningful, personalized learning experiences.
+            Join families across three continents using Pollinate to create meaningful, personalized learning experiences.
           </p>
           <Button asChild size="lg" className="text-lg px-8" data-testid="button-start-now">
             <a href="/api/login">Start Your Free Trial</a>
@@ -170,7 +173,7 @@ export default function Landing() {
 
       <footer className="border-t border-border py-12 bg-card/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-muted-foreground">
-          <p>© 2025 Evergreen Curriculum AI. Supporting homeschool families in the US, Australia, and New Zealand.</p>
+          <p>© 2025 Pollinate. Supporting homeschool families in the US, Australia, and New Zealand.</p>
         </div>
       </footer>
     </div>
