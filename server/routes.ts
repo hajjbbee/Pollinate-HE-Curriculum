@@ -332,7 +332,7 @@ Return JSON in this EXACT structure (no markdown, no code blocks):
 
   const completion = await openai.chat.completions.create({
     model: "anthropic/claude-3.5-sonnet",
-    max_tokens: 2500,
+    max_tokens: 2000,
     temperature: 0.7,
     messages: [
       {

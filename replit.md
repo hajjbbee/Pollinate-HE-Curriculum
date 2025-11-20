@@ -31,7 +31,7 @@ Preferred communication style: Simple, everyday language.
 - **OpenRouter Integration**: Replaced direct Anthropic SDK with OpenRouter proxy
   - Model: `anthropic/claude-3.5-sonnet` via OpenRouter API
   - Free tier credits enable testing without billing setup
-  - Token limit: 2500 (fits within free tier ~2666 token budget)
+  - Token limit: 2000 (optimized for free tier credit management)
   - Generates condensed but complete 12-week curricula
   
 - **Production-Ready Error Handling**:
