@@ -5,6 +5,7 @@ Pollinate is a home education curriculum SaaS platform designed for multi-child 
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
+Language: Australian English (use "mum" not "mom", "colour" not "color", etc.)
 
 ## System Architecture
 
