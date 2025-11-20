@@ -11,11 +11,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Landing from "@/pages/landing";
 import Onboarding from "@/pages/onboarding";
 import Dashboard from "@/pages/dashboard";
+import Today from "@/pages/today";
+import ThisWeek from "@/pages/this-week";
+import ResourcesPage from "@/pages/resources";
+import ProgressPage from "@/pages/progress";
 import Journal from "@/pages/journal";
 import Opportunities from "@/pages/opportunities";
 import FamilySettings from "@/pages/family-settings";
 import Pricing from "@/pages/pricing";
 import NotFound from "@/pages/not-found";
+import { BottomNav } from "@/components/BottomNav";
 
 function AppSidebar() {
   const [location] = useLocation();
@@ -104,10 +109,35 @@ function AppSidebar() {
   );
 }
 
-function AuthenticatedRouter() {
+function MobileRouter() {
+  return (
+    <>
+      <Switch>
+        <Route path="/" component={Today} />
+        <Route path="/today" component={Today} />
+        <Route path="/this-week" component={ThisWeek} />
+        <Route path="/resources" component={ResourcesPage} />
+        <Route path="/progress" component={ProgressPage} />
+        <Route path="/dashboard" component={Dashboard} />
+        <Route path="/journal" component={Journal} />
+        <Route path="/opportunities" component={Opportunities} />
+        <Route path="/settings" component={FamilySettings} />
+        <Route path="/pricing" component={Pricing} />
+        <Route component={NotFound} />
+      </Switch>
+      <BottomNav />
+    </>
+  );
+}
+
+function DesktopRouter() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
+      <Route path="/" component={Today} />
+      <Route path="/today" component={Today} />
+      <Route path="/this-week" component={ThisWeek} />
+      <Route path="/resources" component={ResourcesPage} />
+      <Route path="/progress" component={ProgressPage} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/journal" component={Journal} />
       <Route path="/opportunities" component={Opportunities} />
@@ -149,6 +179,20 @@ function Router() {
     return <Onboarding />;
   }
 
+  // Mobile-first routes (Today, This Week, Resources, Progress) use bottom nav
+  const mobileRoutes = ["/", "/today", "/this-week", "/resources", "/progress"];
+  const isMobileRoute = mobileRoutes.includes(location);
+
+  // For mobile routes, show without sidebar
+  if (isMobileRoute) {
+    return (
+      <div className="min-h-screen w-full bg-background">
+        <MobileRouter />
+      </div>
+    );
+  }
+
+  // For desktop routes (Dashboard, Journal, etc.), use sidebar
   const sidebarStyle = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
@@ -163,7 +207,7 @@ function Router() {
             <SidebarTrigger data-testid="button-sidebar-toggle" />
           </header>
           <main className="flex-1 overflow-y-auto">
-            <AuthenticatedRouter />
+            <DesktopRouter />
           </main>
         </div>
       </div>
