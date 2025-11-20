@@ -690,12 +690,14 @@ router.get("/api/events/week/:weekNumber", isAuthenticated, async (req: Request,
     
     if (events.length === 0) {
       // No cached events, fetch from APIs
+      console.log(`🎪 No cached events for week ${weekNumber}, discovering new events...`);
       const { discoverWeeklyEvents } = await import("./events");
       const curriculum = await storage.getActiveCurriculum(family.id);
       
       if (curriculum) {
         const curriculumData = curriculum.curriculumData as any;
         const weekTheme = curriculumData.weeks[weekNumber - 1]?.familyTheme || "education";
+        console.log(`🎯 Week ${weekNumber} theme: "${weekTheme}"`);
         
         const radiusKm = (family.travelRadiusMinutes / 60) * 50; // Assume 50 km/h average speed
         const newEvents = await discoverWeeklyEvents(
@@ -707,13 +709,24 @@ router.get("/api/events/week/:weekNumber", isAuthenticated, async (req: Request,
           startDate
         );
 
+        console.log(`📅 Discovered ${newEvents.length} events for week ${weekNumber}`);
+
         // Save to database
         for (const event of newEvents) {
-          await storage.createEvent(event as any);
+          try {
+            await storage.createEvent(event as any);
+          } catch (err) {
+            console.error("Error saving event:", err);
+          }
         }
 
         events = await storage.getUpcomingEvents(family.id, startDate, endDate);
+        console.log(`✅ Cached ${events.length} events for week ${weekNumber}`);
+      } else {
+        console.log(`⚠️ No curriculum found for family ${family.id}`);
       }
+    } else {
+      console.log(`✨ Returning ${events.length} cached events for week ${weekNumber}`);
     }
 
     res.json(events);

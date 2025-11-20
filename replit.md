@@ -12,7 +12,22 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-**November 20, 2025** - Production-Ready Enhancements
+**November 20, 2025** - Production-Ready Enhancements & Real-Time Events
+- **Upcoming Events Feature**: Real-time local educational events integrated into weekly curriculum
+  - Multi-source event discovery: Eventbrite API, Google Places, and Meetup.com
+  - Weekly theme matching: 3-8 events per week tailored to curriculum theme
+  - Event details: name, date/time, location, drive time, cost (highlighting FREE), age range, and "why it fits"
+  - Database caching with smart refresh to minimize API calls
+  - Beautiful UI card with calendar icons and direct ticket/registration links
+  - New table: `upcoming_events` with fields for all event metadata
+  - API endpoint: `/api/events/week/:weekNumber` for fetching weekly events
+  
+- **Rebranding**: Complete rebrand from "Evergreen" to "Pollinate - Home Education Curriculum"
+  - Golden yellow color scheme (HSL 45°) replacing forest green throughout
+  - Updated tagline, headers, sidebar, landing page, and all user-facing text
+  - Design guidelines updated with new color palette
+  - "Start Onboarding" button added to empty dashboard state
+  
 - **OpenRouter Integration**: Replaced direct Anthropic SDK with OpenRouter proxy
   - Model: `anthropic/claude-3.5-sonnet` via OpenRouter API
   - Free tier credits enable testing without billing setup
@@ -20,7 +35,7 @@ Preferred communication style: Simple, everyday language.
   - Generates condensed but complete 12-week curricula
   
 - **Production-Ready Error Handling**:
-  - API key validation at startup (OPENROUTER_API_KEY, GOOGLE_MAPS_API_KEY)
+  - API key validation at startup (OPENROUTER_API_KEY, GOOGLE_MAPS_API_KEY, EVENTBRITE_API_KEY optional)
   - Timeout protection: 10s for geocoding, 8s for Places API
   - Retry logic: 2 attempts with exponential backoff for geocoding
   - Specific error messages for billing (402), auth (401), and quota issues
@@ -94,7 +109,7 @@ Preferred communication style: Simple, everyday language.
 **UI Component System**: 
 - Shadcn/UI components built on Radix UI primitives
 - Tailwind CSS for styling with custom design system
-- Nature-inspired green color palette (forest green #2D5F3F as primary)
+- Golden yellow color palette (warm yellow #D4A843 as primary)
 - Typography: Inter for body text, Lexend for headings
 - Responsive design with mobile-first approach
 
@@ -132,6 +147,7 @@ Preferred communication style: Simple, everyday language.
 - Curricula (12-week rolling plans with JSON data structure)
 - Journal Entries (daily logs per child with rich text and photos)
 - Local Opportunities (geocoded educational venues and activities)
+- Upcoming Events (real-time events from Eventbrite, Meetup, Google Places with theme matching)
 
 **AI Integration**: Anthropic Claude API for curriculum generation
 - System prompt enforces hybrid educational methodology

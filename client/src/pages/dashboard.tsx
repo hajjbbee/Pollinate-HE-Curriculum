@@ -12,10 +12,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Sparkles, RefreshCw, Calendar, TrendingUp, MapPin, BookOpen, ExternalLink, Users, Zap } from "lucide-react";
+import { Sparkles, RefreshCw, Calendar, TrendingUp, MapPin, BookOpen, ExternalLink, Users, Zap, CalendarDays, Clock, DollarSign } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { CurriculumData, WeekCurriculum } from "@shared/schema";
+import type { CurriculumData, WeekCurriculum, UpcomingEvent } from "@shared/schema";
 import { Link } from "wouter";
+import { format } from "date-fns";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -51,6 +52,16 @@ export default function Dashboard() {
     queryKey: ["/api/curriculum"],
     retry: false,
     enabled: !!user,
+  });
+
+  const {
+    data: weeklyEvents = [],
+    isLoading: eventsLoading,
+    error: eventsError,
+  } = useQuery<UpcomingEvent[]>({
+    queryKey: ["/api/events/week", currentWeekIndex + 1],
+    enabled: !!user && !!familyData && !!curriculumResponse,
+    retry: 1,
   });
 
   const { data: subscription } = useQuery<{
@@ -415,6 +426,98 @@ export default function Dashboard() {
                 </Card>
               ))}
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <CalendarDays className="w-5 h-5 text-primary" />
+              <CardTitle className="font-heading">Upcoming Events</CardTitle>
+            </div>
+            <CardDescription>
+              Real-time local events matching this week's theme
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {eventsLoading ? (
+              <div className="grid md:grid-cols-2 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-48" />
+                ))}
+              </div>
+            ) : eventsError ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Unable to load events. Please try again later.</p>
+              </div>
+            ) : weeklyEvents.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CalendarDays className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No events found for this week</p>
+                <p className="text-sm mt-1">Check back later as we continuously discover new opportunities!</p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-4">
+                {weeklyEvents.slice(0, 8).map((event, idx) => (
+                  <Card key={event.id} className="hover-elevate active-elevate-2">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <h4 className="font-heading font-semibold text-sm pr-2">{event.eventName}</h4>
+                        {event.cost === "FREE" && (
+                          <Badge variant="default" className="bg-green-500/10 text-green-700 dark:text-green-300 shrink-0">
+                            FREE
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2 mb-3">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="w-3.5 h-3.5 shrink-0" />
+                          <span>{format(new Date(event.eventDate), "EEE, MMM d 'at' h:mm a")}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <MapPin className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{event.location}</span>
+                          {event.driveMinutes && (
+                            <Badge variant="outline" className="text-xs shrink-0">
+                              {event.driveMinutes} min
+                            </Badge>
+                          )}
+                        </div>
+                        {event.cost !== "FREE" && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <DollarSign className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                            <span className="font-semibold text-primary">{event.cost}</span>
+                          </div>
+                        )}
+                        {event.ageRange && (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs">
+                              Ages {event.ageRange}
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+
+                      {event.whyItFits && (
+                        <p className="text-xs text-muted-foreground mb-3 italic border-l-2 border-primary/20 pl-2">
+                          {event.whyItFits}
+                        </p>
+                      )}
+
+                      {event.ticketUrl && (
+                        <Button variant="default" size="sm" className="w-full" asChild>
+                          <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer" data-testid={`link-event-${idx}`}>
+                            <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                            {event.source === "eventbrite" ? "Get Tickets" : "Learn More"}
+                          </a>
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
