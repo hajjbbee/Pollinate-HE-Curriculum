@@ -12,6 +12,17 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+**November 20, 2025** - OpenRouter Integration for Free Tier Testing
+- **Switched to OpenRouter**: Replaced direct Anthropic SDK with OpenRouter proxy
+  - Model: `anthropic/claude-3.5-sonnet` via OpenRouter API
+  - Free tier credits enable testing without billing setup
+  - Token limit: 2500 (fits within free tier ~2666 token budget)
+  - Generates condensed but complete 12-week curricula
+- **Manual Address Entry**: Onboarding now accepts typed addresses when Google Places autocomplete fails
+  - `lat` and `lng` optional in frontend validation
+  - Backend geocodes all addresses via Google Maps Geocoding API
+- **Improved Error Handling**: Graceful fallback when AI generation fails due to credits/billing
+
 **November 19, 2025** - Stripe Subscription Billing & Enhanced Local Opportunities
 - **Stripe Subscription Billing (COMPLETE)**:
   - Two-tier pricing: Basic ($49/month, up to 3 children) and Pro ($99/month, unlimited)

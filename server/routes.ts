@@ -10,6 +10,14 @@ import { CollaborationService } from "./websocket";
 
 const router = Router();
 
+// Validate required API keys at startup
+if (!process.env.OPENROUTER_API_KEY) {
+  console.error("FATAL: OPENROUTER_API_KEY is not set. Curriculum generation will fail.");
+}
+if (!process.env.GOOGLE_MAPS_API_KEY) {
+  console.error("FATAL: GOOGLE_MAPS_API_KEY is not set. Geocoding and opportunities search will fail.");
+}
+
 // Initialize OpenRouter client (OpenAI-compatible API)
 const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
@@ -23,40 +31,84 @@ const openai = new OpenAI({
 // Google Maps API key
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
-// Helper function to geocode address
-async function geocodeAddress(address: string): Promise<{ lat: number; lon: number; city?: string; state?: string; postalCode?: string }> {
+// Helper function to fetch with timeout
+async function fetchWithTimeout(url: string, timeoutMs: number = 10000): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    return response;
+  } catch (error: any) {
+    clearTimeout(timeout);
+    if (error.name === 'AbortError') {
+      throw new Error(`Request timeout after ${timeoutMs}ms`);
+    }
+    throw error;
+  }
+}
+
+// Helper function to geocode address with timeout and retry
+async function geocodeAddress(address: string, retries: number = 2): Promise<{ lat: number; lon: number; city?: string; state?: string; postalCode?: string }> {
+  if (!GOOGLE_MAPS_API_KEY) {
+    throw new Error("Google Maps API key is not configured");
+  }
+
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_API_KEY}`;
-  const response = await fetch(url);
-  const data = await response.json();
+  
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetchWithTimeout(url, 10000);
+      
+      if (!response.ok) {
+        throw new Error(`Geocoding API returned ${response.status}`);
+      }
+      
+      const data = await response.json();
 
-  if (data.status !== "OK" || !data.results || data.results.length === 0) {
-    throw new Error("Failed to geocode address");
+      if (data.status !== "OK" || !data.results || data.results.length === 0) {
+        if (data.status === "ZERO_RESULTS") {
+          throw new Error("Address not found");
+        }
+        throw new Error(`Geocoding failed: ${data.status}`);
+      }
+
+      const result = data.results[0];
+      const location = result.geometry.location;
+
+      // Extract city, state, postal code
+      let city, state, postalCode;
+      for (const component of result.address_components) {
+        if (component.types.includes("locality")) {
+          city = component.long_name;
+        }
+        if (component.types.includes("administrative_area_level_1")) {
+          state = component.short_name;
+        }
+        if (component.types.includes("postal_code")) {
+          postalCode = component.long_name;
+        }
+      }
+
+      return {
+        lat: location.lat,
+        lon: location.lng,
+        city,
+        state,
+        postalCode,
+      };
+    } catch (error: any) {
+      if (attempt === retries) {
+        console.error(`Geocoding failed after ${retries + 1} attempts:`, error);
+        throw error;
+      }
+      console.warn(`Geocoding attempt ${attempt + 1} failed, retrying...`);
+      await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+    }
   }
-
-  const result = data.results[0];
-  const location = result.geometry.location;
-
-  // Extract city, state, postal code
-  let city, state, postalCode;
-  for (const component of result.address_components) {
-    if (component.types.includes("locality")) {
-      city = component.long_name;
-    }
-    if (component.types.includes("administrative_area_level_1")) {
-      state = component.short_name;
-    }
-    if (component.types.includes("postal_code")) {
-      postalCode = component.long_name;
-    }
-  }
-
-  return {
-    lat: location.lat,
-    lon: location.lng,
-    city,
-    state,
-    postalCode,
-  };
+  
+  throw new Error("Geocoding failed after all retries");
 }
 
 // Helper function to search for local opportunities
@@ -103,7 +155,13 @@ async function searchLocalOpportunities(
     const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lon}&radius=${radiusMeters}&keyword=${encodeURIComponent(keyword)}&key=${GOOGLE_MAPS_API_KEY}`;
     
     try {
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url, 8000);
+      
+      if (!response.ok) {
+        console.warn(`Places API HTTP ${response.status} for keyword "${keyword}"`);
+        continue;
+      }
+      
       const data = await response.json();
 
       if (data.status === "OK" && data.results) {
@@ -117,11 +175,18 @@ async function searchLocalOpportunities(
       } else if (data.status === "ZERO_RESULTS") {
         // This is normal, not all keywords will have results
         continue;
+      } else if (data.status === "OVER_QUERY_LIMIT") {
+        console.error("Places API quota exceeded");
+        break;
       } else {
         console.warn(`Places API returned status ${data.status} for keyword "${keyword}"`);
       }
-    } catch (error) {
-      console.error(`Failed to search for ${keyword}:`, error);
+    } catch (error: any) {
+      if (error.message?.includes('timeout')) {
+        console.warn(`Places API timeout for keyword "${keyword}", skipping...`);
+      } else {
+        console.error(`Failed to search for ${keyword}:`, error);
+      }
     }
 
     // Add small delay to avoid rate limiting
@@ -267,7 +332,7 @@ Return JSON in this EXACT structure (no markdown, no code blocks):
 
   const completion = await openai.chat.completions.create({
     model: "anthropic/claude-3.5-sonnet",
-    max_tokens: 16000,
+    max_tokens: 2500,
     temperature: 0.7,
     messages: [
       {
@@ -389,6 +454,10 @@ router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Respon
 
     // Generate initial curriculum
     try {
+      if (!process.env.OPENROUTER_API_KEY) {
+        throw new Error("OpenRouter API key is not configured. Please set OPENROUTER_API_KEY environment variable.");
+      }
+      
       const curriculumData = await generateCurriculum(family, createdChildren, opportunities);
 
       await storage.createCurriculum({
@@ -400,10 +469,16 @@ router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Respon
     } catch (aiError: any) {
       console.error("Curriculum generation error:", aiError);
       
-      // Check if it's an Anthropic API billing/credit error
-      if (aiError.message?.includes("credit balance") || aiError.message?.includes("billing")) {
+      // Check for specific error types
+      if (aiError.message?.includes("credit balance") || aiError.message?.includes("billing") || aiError.status === 402) {
         return res.status(402).json({ 
-          error: "AI service billing issue. Please check your Anthropic account credits at console.anthropic.com and add payment method or credits to continue." 
+          error: "AI service has insufficient credits. Please add credits to your OpenRouter account at openrouter.ai or contact support." 
+        });
+      }
+      
+      if (aiError.message?.includes("API key") || aiError.status === 401) {
+        return res.status(500).json({
+          error: "AI service configuration error. Please contact support."
         });
       }
       
