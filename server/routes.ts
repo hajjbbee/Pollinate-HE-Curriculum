@@ -662,6 +662,67 @@ router.get("/api/opportunities", isAuthenticated, async (req: Request, res: Resp
   }
 });
 
+// Upcoming events
+router.get("/api/events/week/:weekNumber", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const weekNumber = parseInt(req.params.weekNumber);
+    if (isNaN(weekNumber) || weekNumber < 1 || weekNumber > 12) {
+      return res.status(400).json({ error: "Invalid week number" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    // Calculate week date range
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() + (weekNumber - 1) * 7);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 7);
+
+    // Get cached events or fetch new ones
+    let events = await storage.getUpcomingEvents(family.id, startDate, endDate);
+    
+    if (events.length === 0) {
+      // No cached events, fetch from APIs
+      const { discoverWeeklyEvents } = await import("./events");
+      const curriculum = await storage.getActiveCurriculum(family.id);
+      
+      if (curriculum) {
+        const curriculumData = curriculum.curriculumData as any;
+        const weekTheme = curriculumData.weeks[weekNumber - 1]?.familyTheme || "education";
+        
+        const radiusKm = (family.travelRadiusMinutes / 60) * 50; // Assume 50 km/h average speed
+        const newEvents = await discoverWeeklyEvents(
+          family.id,
+          family.latitude,
+          family.longitude,
+          radiusKm,
+          weekTheme,
+          startDate
+        );
+
+        // Save to database
+        for (const event of newEvents) {
+          await storage.createEvent(event as any);
+        }
+
+        events = await storage.getUpcomingEvents(family.id, startDate, endDate);
+      }
+    }
+
+    res.json(events);
+  } catch (error: any) {
+    console.error("Error fetching events:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Object storage routes
 router.post("/api/objects/upload", isAuthenticated, async (req: Request, res: Response) => {
   const objectStorageService = new ObjectStorageService();

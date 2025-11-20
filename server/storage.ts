@@ -240,20 +240,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUpcomingEvents(familyId: string, startDate?: Date, endDate?: Date): Promise<UpcomingEvent[]> {
-    let query = db.select().from(upcomingEvents).where(eq(upcomingEvents.familyId, familyId));
+    const conditions = [eq(upcomingEvents.familyId, familyId)];
     
     if (startDate && endDate) {
-      query = query.where(
-        and(
-          gte(upcomingEvents.eventDate, startDate),
-          lte(upcomingEvents.eventDate, endDate)
-        )
+      conditions.push(
+        gte(upcomingEvents.eventDate, startDate),
+        lte(upcomingEvents.eventDate, endDate)
       );
     } else if (startDate) {
-      query = query.where(gte(upcomingEvents.eventDate, startDate));
+      conditions.push(gte(upcomingEvents.eventDate, startDate));
     }
     
-    const results = await query.orderBy(upcomingEvents.eventDate);
+    const results = await db
+      .select()
+      .from(upcomingEvents)
+      .where(and(...conditions))
+      .orderBy(upcomingEvents.eventDate);
+    
     return results;
   }
 
