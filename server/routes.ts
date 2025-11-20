@@ -898,6 +898,10 @@ router.get("/api/events/week/:weekNumber", isAuthenticated, async (req: Request,
         
         const radiusKm = (family.travelRadiusMinutes / 60) * 50; // Assume 50 km/h average speed
         
+        // Get connected Facebook groups for event discovery
+        const facebookGroups = await storage.getHomeschoolGroups(family.id);
+        console.log(`👥 Including ${facebookGroups.length} Facebook groups in event discovery`);
+        
         // Fetch events for the next 14 days matching this week's theme
         const newEvents = await discoverWeeklyEvents(
           family.id,
@@ -905,7 +909,8 @@ router.get("/api/events/week/:weekNumber", isAuthenticated, async (req: Request,
           family.longitude,
           radiusKm,
           weekTheme,
-          next14DaysStart
+          next14DaysStart,
+          facebookGroups
         );
 
         console.log(`📅 Discovered ${newEvents.length} events for next 14 days (theme: ${weekTheme})`);

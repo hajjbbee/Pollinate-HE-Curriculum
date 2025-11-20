@@ -62,6 +62,12 @@ export default function Dashboard() {
     enabled: !!user && !!familyData,
   });
 
+  // Fetch events for the current week
+  const { data: upcomingEvents = [] } = useQuery<UpcomingEvent[]>({
+    queryKey: ["/api/events/week", currentWeekNumber],
+    enabled: !!user && currentWeekNumber !== null,
+  });
+
   const { data: subscription } = useQuery<{
     plan: string;
     status: string;
@@ -675,6 +681,97 @@ export default function Dashboard() {
                                       )}
                                     </CardContent>
                                   </Card>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Homeschool Happenings Near You */}
+                        {upcomingEvents && upcomingEvents.length > 0 && (
+                          <Card>
+                            <CardHeader>
+                              <div className="flex items-center gap-2">
+                                <CalendarDays className="w-5 h-5 text-primary" />
+                                <CardTitle className="font-heading">Homeschool Happenings Near You</CardTitle>
+                              </div>
+                              <CardDescription>
+                                {upcomingEvents.length} events discovered in your area (next 14 days)
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-3">
+                                {upcomingEvents.slice(0, 8).map((event: UpcomingEvent) => (
+                                  <div
+                                    key={event.id}
+                                    className="p-4 border rounded-lg hover-elevate bg-card"
+                                    data-testid={`event-item-${event.id}`}
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                          <h4 className="font-semibold text-sm" data-testid={`text-event-name-${event.id}`}>
+                                            {event.eventName}
+                                          </h4>
+                                          {event.source === 'facebook_group' && (
+                                            <Badge variant="secondary" className="bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20">
+                                              <SiFacebook className="w-3 h-3 mr-1" />
+                                              {event.groupName}
+                                            </Badge>
+                                          )}
+                                          {event.cost === 'FREE' && (
+                                            <Badge variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20">
+                                              FREE
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2 flex-wrap">
+                                          <div className="flex items-center gap-1">
+                                            <Calendar className="w-3 h-3" />
+                                            {format(parseISO(event.eventDate.toString()), 'MMM d, h:mm a')}
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            <MapPin className="w-3 h-3" />
+                                            {event.location}
+                                          </div>
+                                          {event.driveMinutes && (
+                                            <div className="flex items-center gap-1">
+                                              <Clock className="w-3 h-3" />
+                                              {event.driveMinutes} min drive
+                                            </div>
+                                          )}
+                                          {event.cost && event.cost !== 'FREE' && (
+                                            <div className="flex items-center gap-1">
+                                              <DollarSign className="w-3 h-3" />
+                                              {event.cost}
+                                            </div>
+                                          )}
+                                        </div>
+                                        {event.whyItFits && (
+                                          <p className="text-xs text-muted-foreground italic mb-2">
+                                            {event.whyItFits}
+                                          </p>
+                                        )}
+                                        {event.description && (
+                                          <p className="text-xs text-muted-foreground line-clamp-2">
+                                            {event.description}
+                                          </p>
+                                        )}
+                                      </div>
+                                      {event.ticketUrl && (
+                                        <Button variant="ghost" size="sm" asChild className="shrink-0">
+                                          <a
+                                            href={event.ticketUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            data-testid={`button-event-link-${event.id}`}
+                                          >
+                                            <ExternalLink className="w-4 h-4" />
+                                          </a>
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
                                 ))}
                               </div>
                             </CardContent>
