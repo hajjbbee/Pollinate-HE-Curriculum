@@ -928,6 +928,172 @@ router.get("/api/journal", isAuthenticated, async (req: Request, res: Response) 
   }
 });
 
+// Activity Feedback (emoji reactions for planned activities)
+router.post("/api/activity-feedback", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const { childId, activityId, activityDate, reaction, notes, voiceNoteUrl, photoUrl } = req.body;
+
+    const feedback = await storage.createActivityFeedback({
+      familyId: family.id,
+      childId,
+      activityId,
+      activityDate,
+      reaction,
+      notes,
+      voiceNoteUrl,
+      photoUrl,
+    });
+
+    res.json(feedback);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/api/activity-feedback/:activityId/:date", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const { activityId, date } = req.params;
+    const feedback = await storage.getActivityFeedback(activityId, date);
+    
+    res.json(feedback || null);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.patch("/api/activity-feedback/:feedbackId", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const { feedbackId } = req.params;
+    const updates = req.body;
+
+    const feedback = await storage.updateActivityFeedback(feedbackId, updates);
+    res.json(feedback);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Emerging Interest Signals (free-form spontaneous obsessions)
+router.post("/api/emerging-interests", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const { childId, title, description, voiceNoteUrl, photoUrl, source } = req.body;
+
+    const signal = await storage.createEmergingInterest({
+      familyId: family.id,
+      childId,
+      source: source || "free_form",
+      title,
+      description,
+      voiceNoteUrl,
+      photoUrl,
+      priorityScore: 100, // High priority by default
+      scheduled: false,
+    });
+
+    res.json(signal);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/api/emerging-interests/:childId", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const { childId } = req.params;
+    const signals = await storage.getEmergingInterests(childId, family.id);
+    
+    res.json(signals);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/api/emerging-interests-recent/:childId", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const { childId } = req.params;
+    const { days } = req.query;
+    const signals = await storage.getRecentEmergingInterests(childId, days ? parseInt(days as string) : 30);
+    
+    res.json(signals);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.patch("/api/emerging-interests/:signalId", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const { signalId } = req.params;
+    const updates = req.body;
+
+    const signal = await storage.updateEmergingInterest(signalId, updates);
+    res.json(signal);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Streak tracking
 router.post("/api/daily-completion", isAuthenticated, async (req: Request, res: Response) => {
   try {
