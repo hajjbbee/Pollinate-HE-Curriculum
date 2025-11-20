@@ -137,6 +137,16 @@ export const homeschoolGroups = pgTable("homeschool_groups", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Daily activity completions table (for streak tracking)
+export const dailyCompletions = pgTable("daily_completions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  familyId: varchar("family_id").notNull().references(() => families.id, { onDelete: "cascade" }),
+  completionDate: date("completion_date").notNull(),
+  activitiesCompleted: integer("activities_completed").notNull().default(0),
+  totalActivities: integer("total_activities").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Upcoming events table (from Eventbrite, Google Places, Facebook Groups)
 export const upcomingEvents = pgTable("upcoming_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

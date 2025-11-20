@@ -7,11 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, Users, User, MapPin, Mic, CheckCircle2, Check, X } from "lucide-react";
+import { Sparkles, Users, User, MapPin, Mic, CheckCircle2, Check, X, Flame } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { WeekCurriculum } from "@shared/schema";
 import { format, startOfWeek } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { triggerSubtleConfetti, triggerStreakConfetti } from "@/lib/confetti";
 
 export default function Today() {
   const { user } = useAuth();
@@ -29,6 +30,13 @@ export default function Today() {
     enabled: !!user,
   });
 
+  const { data: streakData } = useQuery<{ streak: number }>({
+    queryKey: ["/api/streak"],
+    enabled: !!user,
+  });
+
+  const currentStreak = streakData?.streak || 0;
+
   // Load completed activities from localStorage
   useEffect(() => {
     const todayDate = format(new Date(), "yyyy-MM-dd");
@@ -38,17 +46,48 @@ export default function Today() {
     }
   }, []);
 
-  // Save completed activities to localStorage
-  const toggleActivity = (activityId: string) => {
+  const trackCompletionMutation = useMutation({
+    mutationFn: async (data: { date: string; completed: number; total: number }) => {
+      return await apiRequest('/api/daily-completion', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/streak'] });
+    },
+  });
+
+  // Save completed activities to localStorage and track in backend
+  const toggleActivity = (activityId: string, totalActivities: number) => {
     const todayDate = format(new Date(), "yyyy-MM-dd");
     const newSet = new Set(completedActivities);
-    if (newSet.has(activityId)) {
+    const wasChecked = newSet.has(activityId);
+    
+    if (wasChecked) {
       newSet.delete(activityId);
     } else {
       newSet.add(activityId);
+      // Trigger confetti when checking an activity
+      triggerSubtleConfetti();
+      
+      // If this completes the day (all activities done), trigger bigger confetti
+      if (newSet.size === totalActivities) {
+        setTimeout(() => {
+          triggerStreakConfetti();
+        }, 300);
+      }
     }
+    
     setCompletedActivities(newSet);
     localStorage.setItem(`completed-${todayDate}`, JSON.stringify(Array.from(newSet)));
+    
+    // Track completion in backend
+    trackCompletionMutation.mutate({
+      date: todayDate,
+      completed: newSet.size,
+      total: totalActivities,
+    });
   };
 
   const saveJournalMutation = useMutation({
@@ -189,8 +228,8 @@ export default function Today() {
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
         <div className="px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
               <h1 className="text-2xl font-heading font-bold text-foreground">
                 {format(today, "EEEE, MMMM d")}
               </h1>
@@ -198,12 +237,29 @@ export default function Today() {
                 Week {currentWeek.weekNumber} • {currentWeek.familyTheme}
               </p>
             </div>
-            <div className="flex flex-col items-end gap-1">
-              <div className="text-2xl font-bold text-primary">
-                {completedCount}/{totalActivities}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                completed
+            <div className="flex items-center gap-4">
+              {/* Streak Counter */}
+              {currentStreak > 0 && (
+                <div className="flex flex-col items-center gap-1" data-testid="streak-counter">
+                  <div className="flex items-center gap-1">
+                    {currentStreak >= 7 && <Flame className="w-5 h-5 text-orange-500" data-testid="streak-fire-icon" />}
+                    <span className="text-2xl font-bold text-primary" data-testid="streak-count">
+                      {currentStreak}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    day streak
+                  </div>
+                </div>
+              )}
+              {/* Progress */}
+              <div className="flex flex-col items-end gap-1">
+                <div className="text-2xl font-bold text-primary" data-testid="progress-count">
+                  {completedCount}/{totalActivities}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  completed
+                </div>
               </div>
             </div>
           </div>
@@ -238,7 +294,7 @@ export default function Today() {
                 <Checkbox
                   id="family-activity"
                   checked={completedActivities.has("family-activity")}
-                  onCheckedChange={() => toggleActivity("family-activity")}
+                  onCheckedChange={() => toggleActivity("family-activity", totalActivities)}
                   className="mt-1 h-8 w-8 rounded-full data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                   data-testid="checkbox-family-activity"
                 />
@@ -270,7 +326,7 @@ export default function Today() {
                 <Checkbox
                   id={`child-activity-${child.childId}`}
                   checked={completedActivities.has(`child-${child.childId}`)}
-                  onCheckedChange={() => toggleActivity(`child-${child.childId}`)}
+                  onCheckedChange={() => toggleActivity(`child-${child.childId}`, totalActivities)}
                   className="mt-1 h-8 w-8 rounded-full data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                   data-testid={`checkbox-child-activity-${idx}`}
                 />

@@ -77,6 +77,11 @@ export interface IStorage {
   updateSubscription(familyId: string, updates: Partial<InsertSubscription>): Promise<Subscription>;
   updateSubscriptionByStripeId(stripeSubscriptionId: string, updates: Partial<InsertSubscription>): Promise<Subscription | null>;
   updateFamilyEventsFetchedAt(familyId: string): Promise<void>;
+
+  // Daily Completions (for streak tracking)
+  upsertDailyCompletion(familyId: string, date: string, completed: number, total: number): Promise<void>;
+  getDailyCompletions(familyId: string, startDate?: Date, endDate?: Date): Promise<any[]>;
+  getCurrentStreak(familyId: string): Promise<number>;
 }
 
 import { db } from "./db";
@@ -90,6 +95,7 @@ import {
   subscriptions,
   upcomingEvents,
   homeschoolGroups,
+  dailyCompletions,
 } from "@shared/schema";
 import { eq, and, desc, gte, lte } from "drizzle-orm";
 
@@ -414,6 +420,103 @@ export class DatabaseStorage implements IStorage {
       .update(families)
       .set({ lastEventsFetchedAt: new Date() })
       .where(eq(families.id, familyId));
+  }
+
+  // Daily Completions (for streak tracking)
+  async upsertDailyCompletion(familyId: string, date: string, completed: number, total: number): Promise<void> {
+    // Check if entry exists for this family and date
+    const existing = await db
+      .select()
+      .from(dailyCompletions)
+      .where(and(
+        eq(dailyCompletions.familyId, familyId),
+        eq(dailyCompletions.completionDate, date)
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      // Update existing entry
+      await db
+        .update(dailyCompletions)
+        .set({
+          activitiesCompleted: completed,
+          totalActivities: total,
+        })
+        .where(and(
+          eq(dailyCompletions.familyId, familyId),
+          eq(dailyCompletions.completionDate, date)
+        ));
+    } else {
+      // Insert new entry
+      await db.insert(dailyCompletions).values({
+        familyId,
+        completionDate: date,
+        activitiesCompleted: completed,
+        totalActivities: total,
+      });
+    }
+  }
+
+  async getDailyCompletions(familyId: string, startDate?: Date, endDate?: Date): Promise<any[]> {
+    let query = db
+      .select()
+      .from(dailyCompletions)
+      .where(eq(dailyCompletions.familyId, familyId));
+
+    if (startDate && endDate) {
+      query = query.where(and(
+        eq(dailyCompletions.familyId, familyId),
+        gte(dailyCompletions.completionDate, startDate.toISOString().split('T')[0]),
+        lte(dailyCompletions.completionDate, endDate.toISOString().split('T')[0])
+      ));
+    }
+
+    const results = await query.orderBy(desc(dailyCompletions.completionDate));
+    return results;
+  }
+
+  async getCurrentStreak(familyId: string): Promise<number> {
+    // Get completions for last 30 days
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+
+    const completions = await db
+      .select()
+      .from(dailyCompletions)
+      .where(and(
+        eq(dailyCompletions.familyId, familyId),
+        gte(dailyCompletions.completionDate, startDate.toISOString().split('T')[0])
+      ))
+      .orderBy(desc(dailyCompletions.completionDate));
+
+    if (completions.length === 0) return 0;
+
+    // Calculate streak - count consecutive days with at least 1 activity completed
+    let streak = 0;
+    let currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+
+    for (const completion of completions) {
+      const completionDate = new Date(completion.completionDate);
+      completionDate.setHours(0, 0, 0, 0);
+      
+      const dayDiff = Math.floor((currentDate.getTime() - completionDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (dayDiff === streak) {
+        // This is the next day in the streak
+        if (completion.activitiesCompleted > 0) {
+          streak++;
+        } else {
+          break; // Streak broken
+        }
+      } else if (dayDiff > streak) {
+        // Gap in streak
+        break;
+      }
+    }
+
+    return streak;
   }
 }
 

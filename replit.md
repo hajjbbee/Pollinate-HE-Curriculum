@@ -43,3 +43,6 @@ Smart children management ensures data integrity during updates. Automatic curri
 ### Other Third-Party Integrations
 - **Stripe**: For subscription billing (Stripe Checkout and webhooks).
 - **Eventbrite API**: For real-time local event discovery.
+
+### Deferred Integrations
+- **Email (Resend/SendGrid)**: Weekly summary emails are planned but integration was dismissed during initial setup. Will need to configure Resend connector or manually add API keys as secrets for future email functionality (Sunday night summaries with mastery stats, photos, and next week preview).

@@ -928,6 +928,46 @@ router.get("/api/journal", isAuthenticated, async (req: Request, res: Response) 
   }
 });
 
+// Streak tracking
+router.post("/api/daily-completion", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const { date, completed, total } = req.body;
+    await storage.upsertDailyCompletion(family.id, date, completed, total);
+    
+    const streak = await storage.getCurrentStreak(family.id);
+    res.json({ streak });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/api/streak", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const streak = await storage.getCurrentStreak(family.id);
+    res.json({ streak });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Local opportunities
 router.get("/api/opportunities", isAuthenticated, async (req: Request, res: Response) => {
   try {
