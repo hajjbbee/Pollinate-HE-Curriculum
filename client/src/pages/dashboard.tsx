@@ -163,6 +163,19 @@ export default function Dashboard() {
   }
 
   const curriculum: CurriculumData = curriculumResponse.curriculumData;
+  
+  if (!curriculum || !curriculum.weeks || curriculum.weeks.length === 0) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <Sparkles className="w-12 h-12 text-primary mx-auto mb-4" />
+        <h2 className="text-2xl font-heading font-bold mb-2">Generating Curriculum...</h2>
+        <p className="text-muted-foreground mb-6">
+          Your personalized curriculum is being created. Please refresh in a moment.
+        </p>
+      </div>
+    );
+  }
+  
   const currentWeek: WeekCurriculum = curriculum.weeks[currentWeekIndex];
 
   const getMasteryColor = (level: string) => {

@@ -285,11 +285,11 @@ REQUIREMENTS:
    - Why this fits the curriculum
    - Suggested dates/times
    - Website link (if available)
-5. Include 10-20 resources per week across THREE categories:
-   - FREE (6-8): YouTube channels/videos, Khan Academy, BBC Bitesize, Librivox audiobooks, free printables, library books with WorldCat links
-   - LOW-COST under $15 (3-5): Thriftbooks, BookOutlet, Etsy printables, TeachersPayTeachers
-   - RECYCLED/HOUSEHOLD/NATURE (4-7): DIY projects using cardboard, bottles, leaves, kitchen items, household objects
-   PRIORITIZE recycled/household resources - these are a huge selling point for budget-conscious families!
+5. Include 9-12 resources per week across THREE categories:
+   - FREE (3-4): YouTube channels/videos, Khan Academy, BBC Bitesize, Librivox audiobooks, free printables, library books
+   - LOW-COST under $15 (3-4): Thriftbooks, BookOutlet, Etsy printables, TeachersPayTeachers  
+   - RECYCLED/HOUSEHOLD/NATURE (3-4): DIY projects using cardboard, bottles, leaves, kitchen items, household objects
+   PRIORITIZE recycled/household resources - huge selling point! Keep descriptions concise.
 
 Return JSON in this EXACT structure (no markdown, no code blocks):
 {
@@ -333,48 +333,42 @@ Return JSON in this EXACT structure (no markdown, no code blocks):
       ],
       "resources": [
         {
-          "title": "Khan Academy: Ecosystems and Energy Flow",
+          "title": "Khan Academy: Ecosystems",
           "link": "https://www.khanacademy.org/science/biology/ecology",
-          "description": "Free video lessons on food chains, energy pyramids, and ecosystem dynamics",
+          "description": "Free video lessons on food chains and energy flow",
           "category": "free"
         },
         {
-          "title": "Build a Bird Feeder from Cardboard & String",
-          "description": "Use an empty milk carton, scissors, string, and birdseed to create a hanging feeder. Observe which birds visit!",
+          "title": "Cardboard Bird Feeder",
+          "description": "Use milk carton, string, and birdseed to observe local birds",
           "category": "recycled"
         },
         {
-          "title": "Leaf Pressing & Identification Kit",
-          "description": "Collect fallen leaves, press between heavy books for 2 weeks, then identify species and create a nature journal",
+          "title": "Leaf Pressing Kit",
+          "description": "Collect leaves, press in books, identify species",
           "category": "recycled"
         },
         {
-          "title": "National Geographic Kids: Birds",
+          "title": "Nat Geo Kids: Birds",
           "link": "https://kids.nationalgeographic.com/animals/birds",
-          "description": "Free bird facts, photos, and videos perfect for young learners",
+          "description": "Free bird facts and videos",
           "category": "free"
         },
         {
-          "title": "The Birdsong Project (Librivox)",
-          "link": "https://librivox.org",
-          "description": "Free audiobook of bird poems and nature writing",
-          "category": "free"
-        },
-        {
-          "title": "Field Guide to Birds (Thriftbooks)",
+          "title": "Used Field Guide (Thriftbooks)",
           "link": "https://www.thriftbooks.com",
-          "description": "Used Peterson or Sibley field guides, typically $8-12 in good condition",
+          "description": "Peterson or Sibley guides, $8-12",
           "category": "low-cost"
         },
         {
-          "title": "DIY Stream Study Kit with Kitchen Items",
-          "description": "Use mason jars to collect water samples, coffee filters for sediment testing, and pH strips from the pharmacy",
+          "title": "DIY Stream Study",
+          "description": "Mason jars, coffee filters for water testing",
           "category": "recycled"
         },
         {
-          "title": "Ecosystem Printables Bundle (Teachers Pay Teachers)",
+          "title": "Ecosystem Printables (TPT)",
           "link": "https://www.teacherspayteachers.com",
-          "description": "Food web diagrams, labeling activities, and ecosystem sorting - free to $3",
+          "description": "Food web diagrams, free-$3",
           "category": "low-cost"
         }
       ]
@@ -384,7 +378,7 @@ Return JSON in this EXACT structure (no markdown, no code blocks):
 
   const completion = await openai.chat.completions.create({
     model: "anthropic/claude-3.5-sonnet",
-    max_tokens: 1800,
+    max_tokens: 1600,
     temperature: 0.7,
     messages: [
       {

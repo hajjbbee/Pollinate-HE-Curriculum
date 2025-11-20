@@ -13,6 +13,16 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 **November 20, 2025** - Production-Ready Enhancements & Real-Time Events
+- **Resource List Feature**: Curated learning resources for each week (COMPLETE)
+  - 9-12 resources per week across three categories: FREE, LOW-COST (<$15), RECYCLED/HOUSEHOLD
+  - FREE resources: YouTube, Khan Academy, BBC Bitesize, Librivox, library books, printables
+  - LOW-COST: Thriftbooks, BookOutlet, Etsy printables, TeachersPayTeachers under $5
+  - RECYCLED/HOUSEHOLD: DIY projects using cardboard, bottles, leaves, kitchen items
+  - Beautiful accordion UI with category icons (Gift for free, DollarSign for low-cost, Leaf for recycled)
+  - "Copy to Shopping List" button with clipboard functionality and toast feedback
+  - Resources optimized to fit within OpenRouter free tier token limits (max_tokens: 1600)
+  - Prioritizes recycled/household items as key selling point for budget-conscious families
+  
 - **Upcoming Events Feature**: Real-time local educational events integrated into weekly curriculum
   - Multi-source event discovery: Eventbrite API, Google Places, and Meetup.com
   - Weekly theme matching: 3-8 events per week tailored to curriculum theme
