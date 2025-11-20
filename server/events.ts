@@ -1,7 +1,27 @@
-import { InsertUpcomingEvent } from "@shared/schema";
+import { InsertUpcomingEvent, HomeschoolGroup } from "@shared/schema";
+import { fetchAllFacebookGroupEvents } from "./facebook-scraper";
 
 const EVENTBRITE_API_KEY = process.env.EVENTBRITE_API_KEY;
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+
+// Homeschool-specific keywords for enhanced discovery
+const HOMESCHOOL_KEYWORDS = [
+  "homeschool",
+  "co-op",
+  "charlotte mason",
+  "montessori",
+  "waldorf",
+  "forest school",
+  "nature study",
+  "classical education",
+  "unschooling",
+  "project-based learning",
+  "hands-on learning",
+  "educational",
+  "science fair",
+  "field trip",
+  "maker space",
+];
 
 interface EventbriteEvent {
   id: string;
@@ -102,7 +122,7 @@ async function fetchEventbriteEvents(
 }
 
 /**
- * Search Google Places for event venues related to the theme
+ * Search Google Places for homeschool-friendly venues and locations
  */
 async function fetchGooglePlacesEvents(
   lat: number,
@@ -117,23 +137,40 @@ async function fetchGooglePlacesEvents(
 
   try {
     const keywords = extractKeywords(theme);
-    const types = ["tourist_attraction", "museum", "library", "point_of_interest"];
+    const homeschoolKeyword = "homeschool education family";
+    
+    // Enhanced search with homeschool-specific places
+    const types = [
+      "museum", 
+      "library", 
+      "park",
+      "aquarium",
+      "zoo",
+      "tourist_attraction",
+    ];
     const events: Partial<InsertUpcomingEvent>[] = [];
 
-    for (const type of types.slice(0, 2)) {
+    // Search for homeschool-friendly locations
+    for (const type of types.slice(0, 3)) {
       const url = new URL("https://maps.googleapis.com/maps/api/place/nearbysearch/json");
       url.searchParams.append("location", `${lat},${lng}`);
       url.searchParams.append("radius", radiusMeters.toString());
       url.searchParams.append("type", type);
-      url.searchParams.append("keyword", keywords.slice(0, 2).join(" "));
+      
+      // Combine theme keywords with homeschool keywords
+      const searchQuery = [...keywords.slice(0, 1), homeschoolKeyword].join(" ");
+      url.searchParams.append("keyword", searchQuery);
       url.searchParams.append("key", GOOGLE_MAPS_API_KEY);
 
       const response = await fetch(url.toString());
       const data = await response.json();
 
-      if (data.status !== "OK") continue;
+      if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
+        console.log(`Google Places API status: ${data.status}`);
+        continue;
+      }
 
-      for (const place of (data.results || []).slice(0, 3)) {
+      for (const place of (data.results || []).slice(0, 2)) {
         // Create generic "visit" events from places
         events.push({
           eventName: `Visit: ${place.name}`,
@@ -141,16 +178,16 @@ async function fetchGooglePlacesEvents(
           location: place.vicinity,
           latitude: place.geometry?.location?.lat,
           longitude: place.geometry?.location?.lng,
-          cost: "Varies",
-          category: type === "museum" ? "history" : "education",
-          description: `Self-guided visit to ${place.name}`,
+          cost: place.business_status === "OPERATIONAL" ? "Varies" : "Check website",
+          category: mapPlaceTypeToCategory(type),
+          description: `Educational visit to ${place.name}. ${place.types?.includes('museum') ? 'Many museums offer homeschool programs.' : ''}`,
           source: "google_places",
           externalId: place.place_id,
         });
       }
     }
 
-    console.log(`✅ Found ${events.length} Google Places events`);
+    console.log(`✅ Found ${events.length} Google Places locations`);
     return events;
   } catch (error) {
     console.error("Error fetching Google Places events:", error);
@@ -159,7 +196,23 @@ async function fetchGooglePlacesEvents(
 }
 
 /**
+ * Map Google Places type to our category system
+ */
+function mapPlaceTypeToCategory(placeType: string): string {
+  const categoryMap: Record<string, string> = {
+    museum: "history",
+    library: "education",
+    park: "nature",
+    aquarium: "science",
+    zoo: "science",
+    tourist_attraction: "education",
+  };
+  return categoryMap[placeType] || "education";
+}
+
+/**
  * Main function to discover events for a family's weekly theme
+ * Includes automatic discovery + optional Facebook group events
  */
 export async function discoverWeeklyEvents(
   familyId: string,
@@ -167,31 +220,41 @@ export async function discoverWeeklyEvents(
   lng: number,
   radiusKm: number,
   weekTheme: string,
-  weekStartDate: Date
+  weekStartDate: Date,
+  facebookGroups?: HomeschoolGroup[]
 ): Promise<Partial<InsertUpcomingEvent>[]> {
   const weekEndDate = new Date(weekStartDate);
   weekEndDate.setDate(weekEndDate.getDate() + 7);
 
   const keywords = extractKeywords(weekTheme);
   
-  // Fetch from multiple sources
-  const [eventbriteEvents, googleEvents] = await Promise.all([
+  console.log(`🔍 Discovering events for theme: "${weekTheme}"`);
+  
+  // Fetch from all sources in parallel
+  const [eventbriteEvents, googleEvents, facebookEvents] = await Promise.all([
     fetchEventbriteEvents(lat, lng, radiusKm, keywords, weekStartDate, weekEndDate),
     fetchGooglePlacesEvents(lat, lng, radiusKm * 1000, weekTheme),
+    facebookGroups && facebookGroups.length > 0
+      ? fetchAllFacebookGroupEvents(
+          facebookGroups.map(g => ({ groupId: g.groupId, groupName: g.groupName }))
+        )
+      : Promise.resolve([]),
   ]);
 
   // Combine and deduplicate
-  const allEvents = [...eventbriteEvents, ...googleEvents];
+  const allEvents = [...eventbriteEvents, ...googleEvents, ...facebookEvents];
   const uniqueEvents = deduplicateEvents(allEvents);
 
+  console.log(`✅ Total discovered: ${uniqueEvents.length} events (${eventbriteEvents.length} Eventbrite, ${googleEvents.length} Google, ${facebookEvents.length} Facebook)`);
+
   // Add familyId and calculate drive times
-  return uniqueEvents.slice(0, 8).map(event => ({
+  return uniqueEvents.slice(0, 12).map(event => ({
     ...event,
     familyId,
     driveMinutes: event.latitude && event.longitude 
       ? estimateDriveTime(lat, lng, event.latitude, event.longitude)
       : undefined,
-    whyItFits: generateWhyItFits(weekTheme, event.eventName || ""),
+    whyItFits: event.whyItFits || generateWhyItFits(weekTheme, event.eventName || ""),
   }));
 }
 
