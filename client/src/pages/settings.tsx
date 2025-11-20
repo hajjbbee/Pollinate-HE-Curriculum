@@ -7,9 +7,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Settings as SettingsIcon, LogOut, MapPin, Users, Calendar, Plus, Trash2 } from "lucide-react";
+import { Settings as SettingsIcon, LogOut, MapPin, Users, Calendar, Plus, Trash2, ChevronDown } from "lucide-react";
 import { SiFacebook } from "react-icons/si";
 
 export default function Settings() {
@@ -17,6 +19,18 @@ export default function Settings() {
   const { toast } = useToast();
   const [newGroupUrl, setNewGroupUrl] = useState("");
   const [newGroupName, setNewGroupName] = useState("");
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  
+  const [eventForms, setEventForms] = useState<{
+    [groupId: string]: {
+      eventName: string;
+      eventDate: string;
+      location: string;
+      cost: string;
+      description: string;
+      ticketUrl: string;
+    };
+  }>({});
 
   const { data: familyData, isLoading: familyLoading } = useQuery({
     queryKey: ["/api/family"],
@@ -77,6 +91,62 @@ export default function Settings() {
       });
     },
   });
+
+  const addEventMutation = useMutation({
+    mutationFn: async ({ groupId, eventData }: { groupId: string; eventData: any }) => {
+      return await apiRequest(`/api/groups/${groupId}/events`, "POST", eventData);
+    },
+    onSuccess: (_, { groupId }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events/week"] });
+      setEventForms(prev => ({
+        ...prev,
+        [groupId]: {
+          eventName: "",
+          eventDate: "",
+          location: "",
+          cost: "FREE",
+          description: "",
+          ticketUrl: "",
+        },
+      }));
+      setExpandedGroup(null);
+      toast({
+        title: "Event added!",
+        description: "The event has been added and will appear on your dashboard.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add event",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const getEventForm = (groupId: string) => {
+    if (!eventForms[groupId]) {
+      return {
+        eventName: "",
+        eventDate: "",
+        location: "",
+        cost: "FREE",
+        description: "",
+        ticketUrl: "",
+      };
+    }
+    return eventForms[groupId];
+  };
+
+  const updateEventForm = (groupId: string, field: string, value: string) => {
+    setEventForms(prev => ({
+      ...prev,
+      [groupId]: {
+        ...getEventForm(groupId),
+        [field]: value,
+      },
+    }));
+  };
 
   if (familyLoading || childrenLoading) {
     return (
@@ -250,39 +320,170 @@ export default function Settings() {
             {!groupsLoading && groups && groups.length > 0 && (
               <div className="space-y-3">
                 <Label className="text-sm font-semibold">Your Groups</Label>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {groups.map((group: any) => (
-                    <div
+                    <Collapsible
                       key={group.id}
-                      className="flex items-center justify-between gap-4 p-4 rounded-lg border border-border hover-elevate"
-                      data-testid={`group-card-${group.id}`}
+                      open={expandedGroup === group.id}
+                      onOpenChange={(open) => setExpandedGroup(open ? group.id : null)}
                     >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-10 h-10 rounded bg-[#1877F2]/10 flex items-center justify-center flex-shrink-0">
-                          <SiFacebook className="w-5 h-5 text-[#1877F2]" />
+                      <div className="rounded-lg border border-border">
+                        <div className="flex items-center gap-4 p-4" data-testid={`group-card-${group.id}`}>
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="w-10 h-10 rounded bg-[#1877F2]/10 flex items-center justify-center flex-shrink-0">
+                              <SiFacebook className="w-5 h-5 text-[#1877F2]" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold truncate">{group.groupName}</p>
+                              <a
+                                href={group.groupUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline truncate block"
+                              >
+                                {group.groupUrl}
+                              </a>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CollapsibleTrigger asChild>
+                              <Button variant="ghost" size="sm" data-testid={`button-add-event-${group.id}`}>
+                                <Plus className="w-4 h-4 mr-1" />
+                                Add Event
+                                <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${expandedGroup === group.id ? 'rotate-180' : ''}`} />
+                              </Button>
+                            </CollapsibleTrigger>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteGroupMutation.mutate(group.id)}
+                              disabled={deleteGroupMutation.isPending}
+                              data-testid={`button-delete-group-${group.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold truncate">{group.groupName}</p>
-                          <a
-                            href={group.groupUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline truncate block"
-                          >
-                            {group.groupUrl}
-                          </a>
-                        </div>
+
+                        <CollapsibleContent>
+                          <div className="border-t border-border p-4 bg-muted/30 space-y-3">
+                            <p className="text-sm text-muted-foreground mb-3">
+                              Add an event you found in {group.groupName}
+                            </p>
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Label htmlFor={`event-name-${group.id}`} className="text-sm">
+                                    Event Name *
+                                  </Label>
+                                  <Input
+                                    id={`event-name-${group.id}`}
+                                    placeholder="Nature Walk & Craft"
+                                    value={getEventForm(group.id).eventName}
+                                    onChange={(e) => updateEventForm(group.id, "eventName", e.target.value)}
+                                    data-testid={`input-event-name-${group.id}`}
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor={`event-date-${group.id}`} className="text-sm">
+                                    Date & Time *
+                                  </Label>
+                                  <Input
+                                    id={`event-date-${group.id}`}
+                                    type="datetime-local"
+                                    value={getEventForm(group.id).eventDate}
+                                    onChange={(e) => updateEventForm(group.id, "eventDate", e.target.value)}
+                                    data-testid={`input-event-date-${group.id}`}
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Label htmlFor={`event-location-${group.id}`} className="text-sm">
+                                    Location *
+                                  </Label>
+                                  <Input
+                                    id={`event-location-${group.id}`}
+                                    placeholder="City Park, Denver"
+                                    value={getEventForm(group.id).location}
+                                    onChange={(e) => updateEventForm(group.id, "location", e.target.value)}
+                                    data-testid={`input-event-location-${group.id}`}
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor={`event-cost-${group.id}`} className="text-sm">
+                                    Cost
+                                  </Label>
+                                  <Input
+                                    id={`event-cost-${group.id}`}
+                                    placeholder="FREE"
+                                    value={getEventForm(group.id).cost}
+                                    onChange={(e) => updateEventForm(group.id, "cost", e.target.value)}
+                                    data-testid={`input-event-cost-${group.id}`}
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <Label htmlFor={`event-description-${group.id}`} className="text-sm">
+                                  Description (optional)
+                                </Label>
+                                <Textarea
+                                  id={`event-description-${group.id}`}
+                                  placeholder="Bring the kids for a guided nature walk followed by leaf crafts..."
+                                  value={getEventForm(group.id).description}
+                                  onChange={(e) => updateEventForm(group.id, "description", e.target.value)}
+                                  rows={2}
+                                  data-testid={`input-event-description-${group.id}`}
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor={`event-url-${group.id}`} className="text-sm">
+                                  Event URL (optional)
+                                </Label>
+                                <Input
+                                  id={`event-url-${group.id}`}
+                                  placeholder="https://..."
+                                  value={getEventForm(group.id).ticketUrl}
+                                  onChange={(e) => updateEventForm(group.id, "ticketUrl", e.target.value)}
+                                  data-testid={`input-event-url-${group.id}`}
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  onClick={() => {
+                                    const form = getEventForm(group.id);
+                                    if (!form.eventName || !form.eventDate || !form.location) {
+                                      toast({
+                                        title: "Missing information",
+                                        description: "Please fill in event name, date, and location.",
+                                        variant: "destructive",
+                                      });
+                                      return;
+                                    }
+                                    addEventMutation.mutate({
+                                      groupId: group.id,
+                                      eventData: form,
+                                    });
+                                  }}
+                                  disabled={addEventMutation.isPending}
+                                  data-testid={`button-save-event-${group.id}`}
+                                >
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Save Event
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  onClick={() => setExpandedGroup(null)}
+                                  data-testid={`button-cancel-event-${group.id}`}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </CollapsibleContent>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteGroupMutation.mutate(group.id)}
-                        disabled={deleteGroupMutation.isPending}
-                        data-testid={`button-delete-group-${group.id}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    </Collapsible>
                   ))}
                 </div>
               </div>
