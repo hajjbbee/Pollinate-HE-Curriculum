@@ -121,6 +121,28 @@ export const subscriptions = pgTable("subscriptions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Upcoming events table (from Eventbrite, Meetup, Google Places)
+export const upcomingEvents = pgTable("upcoming_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  familyId: varchar("family_id").notNull().references(() => families.id, { onDelete: "cascade" }),
+  eventName: varchar("event_name").notNull(),
+  eventDate: timestamp("event_date").notNull(),
+  endDate: timestamp("end_date"),
+  location: text("location").notNull(),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
+  driveMinutes: integer("drive_minutes"),
+  cost: varchar("cost").notNull(), // "FREE", "$10", "$5-15", etc.
+  ageRange: varchar("age_range"), // "5-12", "All ages", etc.
+  category: varchar("category").notNull(), // "education", "science", "art", "history", etc.
+  description: text("description"),
+  whyItFits: text("why_it_fits"), // One-sentence explanation
+  ticketUrl: text("ticket_url"),
+  source: varchar("source").notNull(), // "eventbrite", "meetup", "google_places"
+  externalId: varchar("external_id"), // ID from source API
+  cachedAt: timestamp("cached_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one }) => ({
   family: one(families, {
@@ -138,6 +160,7 @@ export const familiesRelations = relations(families, ({ one, many }) => ({
   curricula: many(curricula),
   journalEntries: many(journalEntries),
   localOpportunities: many(localOpportunities),
+  upcomingEvents: many(upcomingEvents),
   subscription: one(subscriptions, {
     fields: [families.id],
     references: [subscriptions.familyId],
@@ -184,6 +207,13 @@ export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
   }),
 }));
 
+export const upcomingEventsRelations = relations(upcomingEvents, ({ one }) => ({
+  family: one(families, {
+    fields: [upcomingEvents.familyId],
+    references: [families.id],
+  }),
+}));
+
 // Insert schemas
 export const insertFamilySchema = createInsertSchema(families).omit({
   id: true,
@@ -219,6 +249,11 @@ export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
   updatedAt: true,
 });
 
+export const insertUpcomingEventSchema = createInsertSchema(upcomingEvents).omit({
+  id: true,
+  cachedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -240,6 +275,9 @@ export type LocalOpportunity = typeof localOpportunities.$inferSelect;
 
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
 export type Subscription = typeof subscriptions.$inferSelect;
+
+export type InsertUpcomingEvent = z.infer<typeof insertUpcomingEventSchema>;
+export type UpcomingEvent = typeof upcomingEvents.$inferSelect;
 
 // Curriculum JSON structure types
 export interface WeekActivity {
