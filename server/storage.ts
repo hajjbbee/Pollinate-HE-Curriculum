@@ -11,6 +11,8 @@ import type {
   LocalOpportunity,
   InsertSubscription,
   Subscription,
+  InsertUpcomingEvent,
+  UpcomingEvent,
   User,
   UpsertUser,
 } from "@shared/schema";
@@ -50,6 +52,12 @@ export interface IStorage {
   getOpportunities(familyId: string): Promise<LocalOpportunity[]>;
   deleteOpportunitiesByFamily(familyId: string): Promise<void>;
 
+  // Upcoming Events
+  createEvent(event: InsertUpcomingEvent): Promise<UpcomingEvent>;
+  getUpcomingEvents(familyId: string, startDate?: Date, endDate?: Date): Promise<UpcomingEvent[]>;
+  deleteEventsByFamily(familyId: string): Promise<void>;
+  deleteOldEvents(beforeDate: Date): Promise<void>;
+
   // Subscriptions
   upsertSubscription(subscription: InsertSubscription): Promise<Subscription>;
   getSubscription(familyId: string): Promise<Subscription | null>;
@@ -68,8 +76,9 @@ import {
   journalEntries,
   localOpportunities,
   subscriptions,
+  upcomingEvents,
 } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte, lte } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   // User (for authentication)
@@ -222,6 +231,38 @@ export class DatabaseStorage implements IStorage {
 
   async deleteOpportunitiesByFamily(familyId: string): Promise<void> {
     await db.delete(localOpportunities).where(eq(localOpportunities.familyId, familyId));
+  }
+
+  // Upcoming Events
+  async createEvent(event: InsertUpcomingEvent): Promise<UpcomingEvent> {
+    const [result] = await db.insert(upcomingEvents).values(event).returning();
+    return result;
+  }
+
+  async getUpcomingEvents(familyId: string, startDate?: Date, endDate?: Date): Promise<UpcomingEvent[]> {
+    let query = db.select().from(upcomingEvents).where(eq(upcomingEvents.familyId, familyId));
+    
+    if (startDate && endDate) {
+      query = query.where(
+        and(
+          gte(upcomingEvents.eventDate, startDate),
+          lte(upcomingEvents.eventDate, endDate)
+        )
+      );
+    } else if (startDate) {
+      query = query.where(gte(upcomingEvents.eventDate, startDate));
+    }
+    
+    const results = await query.orderBy(upcomingEvents.eventDate);
+    return results;
+  }
+
+  async deleteEventsByFamily(familyId: string): Promise<void> {
+    await db.delete(upcomingEvents).where(eq(upcomingEvents.familyId, familyId));
+  }
+
+  async deleteOldEvents(beforeDate: Date): Promise<void> {
+    await db.delete(upcomingEvents).where(lte(upcomingEvents.eventDate, beforeDate));
   }
 
   // Subscriptions
