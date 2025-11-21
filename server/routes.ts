@@ -1,6 +1,6 @@
 import { Router, type Request, type Response, type Express } from "express";
 import { storage } from "./storage";
-import { insertFamilySchema, insertChildSchema, insertJournalEntrySchema, type CurriculumData, type WeekCurriculum } from "@shared/schema";
+import { insertFamilySchema, insertChildSchema, insertJournalEntrySchema, type CurriculumData, type WeekCurriculum, curriculumDataSchema } from "@shared/schema";
 import { z } from "zod";
 import OpenAI from "openai";
 import { setupAuth, isAuthenticated } from "./replitAuth";
@@ -461,8 +461,26 @@ Return JSON in this EXACT structure (no markdown, no code blocks):
   }
   cleanedResponse = cleanedResponse.trim();
 
-  const curriculumData = JSON.parse(cleanedResponse);
-  return curriculumData;
+  // Parse JSON
+  let parsedData;
+  try {
+    parsedData = JSON.parse(cleanedResponse);
+  } catch (parseError: any) {
+    console.error("Failed to parse AI curriculum response:", parseError.message);
+    console.error("Response text:", cleanedResponse.substring(0, 500));
+    throw new Error("AI generated invalid JSON. Please try regenerating the curriculum.");
+  }
+
+  // Validate with Zod schema
+  const validationResult = curriculumDataSchema.safeParse(parsedData);
+  
+  if (!validationResult.success) {
+    console.error("Curriculum validation failed:", validationResult.error.format());
+    console.error("Parsed data structure:", JSON.stringify(parsedData, null, 2).substring(0, 1000));
+    throw new Error(`AI generated curriculum doesn't match expected structure: ${validationResult.error.message}`);
+  }
+
+  return validationResult.data;
 }
 
 // Auth route to get current user

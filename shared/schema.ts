@@ -410,6 +410,75 @@ export type HomeschoolGroup = typeof homeschoolGroups.$inferSelect;
 export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
 export type SupportTicket = typeof supportTickets.$inferSelect;
 
+// Zod schemas for AI curriculum response validation
+export const confidenceExampleSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().min(10),
+  ageRange: z.string().optional(),
+  pedagogy: z.string().optional(),
+});
+
+export const activityWithExamplesSchema = z.object({
+  activity: z.string().min(1),
+  examples: z.object({
+    quickEasy: confidenceExampleSchema,
+    mediumAdventure: confidenceExampleSchema,
+    deepDive: confidenceExampleSchema,
+  }).optional(),
+});
+
+export const dailyActivitySchema = z.union([
+  z.string().min(1),
+  activityWithExamplesSchema,
+]);
+
+export const weekActivitySchema = z.object({
+  name: z.string().min(1),
+  address: z.string().min(1),
+  driveMinutes: z.number().int().min(0).max(180),
+  cost: z.string().min(1),
+  why: z.string().min(1),
+  link: z.string().url().nullable(),
+  dates: z.string().min(1),
+});
+
+export const resourceSchema = z.object({
+  title: z.string().min(1),
+  link: z.string().url().optional(),
+  description: z.string().min(1),
+  category: z.enum(["free", "low-cost", "recycled"]),
+});
+
+export const childWeekPlanSchema = z.object({
+  childId: z.string().uuid(),
+  name: z.string().min(1),
+  age: z.number().int().min(0).max(25),
+  deepDives: z.array(z.string()).min(1).max(5),
+  dailyPlan: z.object({
+    Monday: z.array(dailyActivitySchema).min(0).max(10),
+    Tuesday: z.array(dailyActivitySchema).min(0).max(10),
+    Wednesday: z.array(dailyActivitySchema).min(0).max(10),
+    Thursday: z.array(dailyActivitySchema).min(0).max(10),
+    Friday: z.array(dailyActivitySchema).min(0).max(10),
+    Weekend: z.string(),
+  }),
+  masteryUpdates: z.record(z.string(), z.string()),
+});
+
+export const weekCurriculumSchema = z.object({
+  weekNumber: z.number().int().min(1).max(12),
+  familyTheme: z.string().min(1),
+  familyActivities: z.array(z.string()).min(0).max(10),
+  localOpportunities: z.array(weekActivitySchema).min(0).max(25),
+  children: z.array(childWeekPlanSchema).min(1),
+  resources: z.array(resourceSchema).min(0).max(20),
+});
+
+export const curriculumDataSchema = z.object({
+  generatedAt: z.string().datetime(),
+  weeks: z.array(weekCurriculumSchema).length(12),
+});
+
 // Curriculum JSON structure types
 export interface WeekActivity {
   name: string;
