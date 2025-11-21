@@ -11,22 +11,27 @@ import { CollaborationService } from "./websocket";
 const router = Router();
 
 // Validate required API keys at startup
-if (!process.env.OPENROUTER_API_KEY) {
-  console.error("FATAL: OPENROUTER_API_KEY is not set. Curriculum generation will fail.");
+if (!process.env.XAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+  console.error("FATAL: Neither XAI_API_KEY nor ANTHROPIC_API_KEY is set. Curriculum generation will fail.");
 }
 if (!process.env.GOOGLE_MAPS_API_KEY) {
   console.error("FATAL: GOOGLE_MAPS_API_KEY is not set. Geocoding and opportunities search will fail.");
 }
 
-// Initialize OpenRouter client (OpenAI-compatible API)
-const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY,
+// Initialize xAI client (primary) - OpenAI-compatible API
+const xaiClient = process.env.XAI_API_KEY ? new OpenAI({
+  baseURL: "https://api.x.ai/v1",
+  apiKey: process.env.XAI_API_KEY,
+}) : null;
+
+// Initialize Anthropic client (fallback)
+const anthropicClient = process.env.ANTHROPIC_API_KEY ? new OpenAI({
+  baseURL: "https://api.anthropic.com/v1",
+  apiKey: process.env.ANTHROPIC_API_KEY,
   defaultHeaders: {
-    "HTTP-Referer": process.env.REPLIT_DOMAINS || "https://replit.app",
-    "X-Title": "Pollinate - Home Education Curriculum",
+    "anthropic-version": "2023-06-01",
   },
-});
+}) : null;
 
 // Google Maps API key
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
@@ -430,21 +435,83 @@ Return JSON in this EXACT structure (no markdown, no code blocks):
   ]
 }`;
 
-  const completion = await openai.chat.completions.create({
-    model: "anthropic/claude-3.5-sonnet",
-    max_tokens: 6000,
-    temperature: 0.7,
-    messages: [
-      {
-        role: "system",
-        content: systemPrompt,
-      },
-      {
-        role: "user",
-        content: userPrompt,
-      },
-    ],
-  });
+  // Try xAI Grok-4 first, then fall back to Anthropic Claude
+  let completion;
+  let usedProvider = "unknown";
+  
+  try {
+    if (xaiClient) {
+      console.log("Using xAI Grok-4 for curriculum generation...");
+      completion = await xaiClient.chat.completions.create({
+        model: "grok-4",
+        max_tokens: 8000,
+        temperature: 0.7,
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+          {
+            role: "user",
+            content: userPrompt,
+          },
+        ],
+      });
+      usedProvider = "xAI Grok-4";
+    } else if (anthropicClient) {
+      console.log("Using Anthropic Claude 3.5 Sonnet for curriculum generation...");
+      completion = await anthropicClient.chat.completions.create({
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 8000,
+        temperature: 0.7,
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+          {
+            role: "user",
+            content: userPrompt,
+          },
+        ],
+      });
+      usedProvider = "Anthropic Claude 3.5 Sonnet";
+    } else {
+      throw new Error("No AI provider configured. Please set XAI_API_KEY or ANTHROPIC_API_KEY.");
+    }
+    console.log(`Curriculum generated successfully using ${usedProvider}`);
+  } catch (primaryError: any) {
+    console.error(`Primary AI provider (${usedProvider}) failed:`, primaryError.message);
+    
+    // Try fallback if primary failed
+    if (xaiClient && anthropicClient && usedProvider === "xAI Grok-4") {
+      console.log("Falling back to Anthropic Claude 3.5 Sonnet...");
+      try {
+        completion = await anthropicClient.chat.completions.create({
+          model: "claude-3-5-sonnet-20241022",
+          max_tokens: 8000,
+          temperature: 0.7,
+          messages: [
+            {
+              role: "system",
+              content: systemPrompt,
+            },
+            {
+              role: "user",
+              content: userPrompt,
+            },
+          ],
+        });
+        usedProvider = "Anthropic Claude 3.5 Sonnet (fallback)";
+        console.log("Fallback to Anthropic successful");
+      } catch (fallbackError: any) {
+        console.error("Fallback to Anthropic also failed:", fallbackError.message);
+        throw primaryError; // Throw original error
+      }
+    } else {
+      throw primaryError;
+    }
+  }
 
   const responseText = completion.choices[0]?.message?.content || "";
   
@@ -573,8 +640,8 @@ router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Respon
     // Generate initial curriculum
     let curriculumGenerationMessage = null;
     try {
-      if (!process.env.OPENROUTER_API_KEY) {
-        throw new Error("OpenRouter API key is not configured. Please set OPENROUTER_API_KEY environment variable.");
+      if (!process.env.XAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+        throw new Error("No AI provider configured. Please set XAI_API_KEY or ANTHROPIC_API_KEY environment variable.");
       }
       
       const curriculumData = await generateCurriculum(family, createdChildren, opportunities);

@@ -57,6 +57,31 @@ export const families = pgTable("families", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Learning approaches (pedagogies) that can be selected
+export const learningApproaches = [
+  "charlotte-mason",
+  "montessori",
+  "waldorf",
+  "unschooling",
+  "project-based",
+  "classical",
+  "eclectic",
+  "perfect-blend"
+] as const;
+
+export type LearningApproach = typeof learningApproaches[number];
+
+// Family learning approach preferences
+export const familyApproaches = pgTable("family_approaches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  familyId: varchar("family_id").notNull().unique().references(() => families.id, { onDelete: "cascade" }),
+  primaryApproach: varchar("primary_approach").notNull(), // Main pedagogy or "perfect-blend"
+  secondaryApproaches: text("secondary_approaches").array().default(sql`ARRAY[]::text[]`), // Additional pedagogies to blend
+  emphasis: jsonb("emphasis").default(sql`'{}'::jsonb`), // { "charlotte-mason": 0.4, "montessori": 0.3, "waldorf": 0.3 }
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Children table
 export const children = pgTable("children", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -65,6 +90,17 @@ export const children = pgTable("children", {
   birthdate: date("birthdate").notNull(),
   interests: text("interests").array().notNull().default(sql`ARRAY[]::text[]`),
   learningStyle: varchar("learning_style"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Child-specific learning approach overrides
+export const childApproaches = pgTable("child_approaches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  childId: varchar("child_id").notNull().unique().references(() => children.id, { onDelete: "cascade" }),
+  primaryApproach: varchar("primary_approach"), // Override family default if set
+  secondaryApproaches: text("secondary_approaches").array().default(sql`ARRAY[]::text[]`),
+  emphasis: jsonb("emphasis").default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
