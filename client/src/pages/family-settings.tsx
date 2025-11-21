@@ -54,6 +54,8 @@ const familySettingsSchema = z.object({
       hasAnxiety: z.boolean().optional(),
       anxietyIntensity: z.number().min(0).max(10).optional(),
       isPerfectionist: z.boolean().optional(),
+      // High School Mode (ages 12+)
+      isHighSchoolMode: z.boolean().optional(),
     })
   ).min(1, "Please add at least one child"),
 });
@@ -119,6 +121,7 @@ export default function FamilySettings() {
           hasAnxiety: false,
           anxietyIntensity: 0,
           isPerfectionist: false,
+          isHighSchoolMode: false,
         },
       ],
     },
@@ -160,6 +163,7 @@ export default function FamilySettings() {
           hasAnxiety: child.hasAnxiety ?? false,
           anxietyIntensity: child.anxietyIntensity ?? 0,
           isPerfectionist: child.isPerfectionist ?? false,
+          isHighSchoolMode: child.isHighSchoolMode ?? false,
         })),
       });
     }
@@ -948,6 +952,42 @@ export default function FamilySettings() {
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
+
+                  {/* High School Mode Toggle (ages 12+) */}
+                  {(() => {
+                    const birthdate = form.watch(`children.${index}.birthdate`);
+                    if (!birthdate) return null;
+                    
+                    const age = Math.floor((new Date().getTime() - new Date(birthdate).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+                    if (age < 12) return null;
+
+                    return (
+                      <div className="mt-4 p-4 border-2 border-primary/20 rounded-lg bg-primary/5">
+                        <FormField
+                          control={form.control}
+                          name={`children.${index}.isHighSchoolMode`}
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between">
+                              <div className="space-y-1">
+                                <FormLabel className="text-base font-semibold">High School Mode</FormLabel>
+                                <FormDescription className="text-sm">
+                                  Auto-map activities to academic credits, track courses, and generate official transcripts for university applications.
+                                  Perfect for ages 12+. Includes transcript management, credit tracking, and professional PDF transcripts.
+                                </FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch 
+                                  checked={field.value} 
+                                  onCheckedChange={field.onChange} 
+                                  data-testid={`switch-high-school-mode-${index}`} 
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
             </CardContent>
