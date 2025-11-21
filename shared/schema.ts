@@ -91,6 +91,21 @@ export const children = pgTable("children", {
   birthdate: date("birthdate").notNull(),
   interests: text("interests").array().notNull().default(sql`ARRAY[]::text[]`),
   learningStyle: varchar("learning_style"),
+  
+  // Learning Needs & Neurodivergent Profiles
+  hasAdhd: boolean("has_adhd").notNull().default(false),
+  adhdIntensity: integer("adhd_intensity").default(0), // 0-10 scale
+  hasAutism: boolean("has_autism").notNull().default(false),
+  autismIntensity: integer("autism_intensity").default(0), // 0-10 scale
+  sensoryProfile: varchar("sensory_profile"), // "seeking", "avoiding", "mixed", null
+  isGifted: boolean("is_gifted").notNull().default(false),
+  is2e: boolean("is_2e").notNull().default(false), // Twice exceptional (gifted + learning difference)
+  hasDyslexia: boolean("has_dyslexia").notNull().default(false),
+  dyslexiaIntensity: integer("dyslexia_intensity").default(0), // 0-10 scale
+  hasAnxiety: boolean("has_anxiety").notNull().default(false),
+  anxietyIntensity: integer("anxiety_intensity").default(0), // 0-10 scale
+  isPerfectionist: boolean("is_perfectionist").notNull().default(false),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
