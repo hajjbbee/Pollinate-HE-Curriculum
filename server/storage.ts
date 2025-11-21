@@ -122,6 +122,21 @@ export interface IStorage {
   // upsertChildApproach(approach: InsertChildApproach): Promise<ChildApproach>;
   // getChildApproach(childId: string): Promise<ChildApproach | null>;
   // getChildApproaches(childIds: string[]): Promise<ChildApproach[]>;
+
+  // Privacy & Data Management
+  getAllFamilyData(userId: string): Promise<{
+    family: Family | null;
+    children: Child[];
+    curricula: Curriculum[];
+    journalEntries: JournalEntry[];
+    activityFeedback: ActivityFeedback[];
+    emergingInterests: EmergingInterestSignal[];
+    localOpportunities: LocalOpportunity[];
+    upcomingEvents: UpcomingEvent[];
+    homeschoolGroups: HomeschoolGroup[];
+  }>;
+  deleteAllPhotosAndJournals(familyId: string): Promise<void>;
+  deleteAccount(userId: string): Promise<void>;
 }
 
 import { db } from "./db";
@@ -836,6 +851,71 @@ export class DatabaseStorage implements IStorage {
   //     .from(childApproaches)
   //     .where(inArray(childApproaches.childId, childIds));
   // }
+
+  // Privacy & Data Management
+  async getAllFamilyData(userId: string) {
+    const family = await this.getFamily(userId);
+    
+    if (!family) {
+      return {
+        family: null,
+        children: [],
+        curricula: [],
+        journalEntries: [],
+        activityFeedback: [],
+        emergingInterests: [],
+        localOpportunities: [],
+        upcomingEvents: [],
+        homeschoolGroups: [],
+      };
+    }
+
+    const children = await this.getChildren(family.id);
+    const childIds = children.map(c => c.id);
+    
+    const curricula = await this.getAllCurricula(family.id);
+    const journalEntries = await this.getJournalEntries(family.id);
+    const localOpportunities = await this.getOpportunities(family.id);
+    const upcomingEvents = await this.getUpcomingEvents(family.id);
+    const homeschoolGroups = await this.getHomeschoolGroups(family.id);
+    
+    let activityFeedback: ActivityFeedback[] = [];
+    let emergingInterests: EmergingInterestSignal[] = [];
+    
+    for (const childId of childIds) {
+      const childFeedback = await this.getActivityFeedbackByChild(childId);
+      const childInterests = await this.getEmergingInterests(childId);
+      activityFeedback = [...activityFeedback, ...childFeedback];
+      emergingInterests = [...emergingInterests, ...childInterests];
+    }
+
+    return {
+      family,
+      children,
+      curricula,
+      journalEntries,
+      activityFeedback,
+      emergingInterests,
+      localOpportunities,
+      upcomingEvents,
+      homeschoolGroups,
+    };
+  }
+
+  async deleteAllPhotosAndJournals(familyId: string): Promise<void> {
+    const children = await this.getChildren(familyId);
+    const childIds = children.map(c => c.id);
+
+    await db.delete(journalEntries).where(eq(journalEntries.familyId, familyId));
+    
+    if (childIds.length > 0) {
+      await db.delete(activityFeedback).where(inArray(activityFeedback.childId, childIds));
+    }
+  }
+
+  async deleteAccount(userId: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, userId));
+  }
 }
 
 export const storage = new DatabaseStorage();
