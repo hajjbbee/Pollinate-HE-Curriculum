@@ -16,7 +16,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
-import { MapPin, User, Calendar, Plus, Trash2, Save, Sparkles, Facebook } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { MapPin, User, Calendar, Plus, Trash2, Save, Sparkles, Facebook, Download, Shield } from "lucide-react";
 import { PlacesAutocomplete } from "@/components/PlacesAutocomplete";
 import { useLocation } from "wouter";
 
@@ -48,6 +49,8 @@ export default function FamilySettings() {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [newGroupUrl, setNewGroupUrl] = useState("");
   const [newGroupName, setNewGroupName] = useState("");
+  const [showDeletePhotosDialog, setShowDeletePhotosDialog] = useState(false);
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
 
   const { data: familyData, isLoading: familyLoading } = useQuery({
     queryKey: ["/api/family"],
@@ -204,6 +207,88 @@ export default function FamilySettings() {
       toast({
         title: "Error",
         description: error.message || "Failed to update settings",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const exportDataMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/family/export-data", {
+        method: "GET",
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to export data");
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pollinate-family-data-${Date.now()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Data export complete!",
+        description: "Your family data has been downloaded as a ZIP file.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Export failed",
+        description: error.message || "Failed to export data. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deletePhotosJournalsMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("DELETE", "/api/family/photos-journals", null);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/journal"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activity-feedback"] });
+      setShowDeletePhotosDialog(false);
+      toast({
+        title: "All gone — your privacy is restored ✨",
+        description: "All photos and journal entries have been permanently removed from our servers.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Deletion failed",
+        description: error.message || "Failed to delete photos and journals. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("DELETE", "/api/family/account", null);
+    },
+    onSuccess: () => {
+      setShowDeleteAccountDialog(false);
+      toast({
+        title: "All gone — your privacy is restored ✨",
+        description: "Your account and all data have been permanently removed.",
+      });
+      
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 2000);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Deletion failed",
+        description: error.message || "Failed to delete account. Please try again.",
         variant: "destructive",
       });
     },
@@ -615,6 +700,129 @@ export default function FamilySettings() {
           </div>
         </form>
       </Form>
+
+      {/* Privacy & Data Section */}
+      <Card className="mt-8 border-2 border-green-200 dark:border-green-900/50">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-green-700 dark:text-green-500" />
+            <CardTitle className="font-heading">Privacy & Data</CardTitle>
+          </div>
+          <CardDescription>
+            Download or permanently delete your family's data — you're in complete control
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Export Data */}
+          <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+            <div className="flex-1">
+              <h4 className="font-medium">Download all my family data</h4>
+              <p className="text-sm text-muted-foreground">
+                Exports a beautiful ZIP with all photos, journals, and curricula as PDFs
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => exportDataMutation.mutate()}
+              disabled={exportDataMutation.isPending}
+              data-testid="button-export-data"
+            >
+              {exportDataMutation.isPending ? (
+                "Exporting..."
+              ) : (
+                <>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Delete Photos & Journals */}
+          <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+            <div className="flex-1">
+              <h4 className="font-medium">Delete all photos & journal entries</h4>
+              <p className="text-sm text-muted-foreground">
+                Instant permanent delete — removes all photos and journal entries from our servers
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => setShowDeletePhotosDialog(true)}
+              disabled={deletePhotosJournalsMutation.isPending}
+              data-testid="button-delete-photos"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete
+            </Button>
+          </div>
+
+          {/* Delete Account */}
+          <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+            <div className="flex-1">
+              <h4 className="font-medium">Delete my entire account & all data</h4>
+              <p className="text-sm text-muted-foreground">
+                Full wipe, no recovery — permanently removes everything
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => setShowDeleteAccountDialog(true)}
+              disabled={deleteAccountMutation.isPending}
+              data-testid="button-delete-account"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Account
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Confirmation Dialogs */}
+      <AlertDialog open={showDeletePhotosDialog} onOpenChange={setShowDeletePhotosDialog}>
+        <AlertDialogContent data-testid="dialog-delete-photos">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete all photos & journal entries?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove all photos and journal entries from our servers. Are you sure?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-photos">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletePhotosJournalsMutation.mutate()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-photos"
+            >
+              Yes, delete permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteAccountDialog} onOpenChange={setShowDeleteAccountDialog}>
+        <AlertDialogContent data-testid="dialog-delete-account">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete your entire account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove your account and all associated data. This action cannot be undone. Are you sure?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-account">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteAccountMutation.mutate()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-account"
+            >
+              Yes, delete my account
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

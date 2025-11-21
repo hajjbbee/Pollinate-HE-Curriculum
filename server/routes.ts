@@ -938,26 +938,86 @@ router.get("/api/family/export-data", isAuthenticated, async (req: Request, res:
     // Add JSON data file
     archive.append(JSON.stringify(allData, null, 2), { name: "family-data.json" });
 
-    // Create PDF summary
-    const doc = new PDFDocument();
+    // Create comprehensive PDF summary
+    const doc = new PDFDocument({ margin: 50 });
     const pdfBuffers: Buffer[] = [];
     doc.on("data", pdfBuffers.push.bind(pdfBuffers));
     
-    doc.fontSize(20).text("Pollinate Family Data Export", { align: "center" });
-    doc.moveDown();
-    doc.fontSize(14).text(`Family: ${allData.family.familyName}`);
-    doc.fontSize(12).text(`Location: ${allData.family.city}, ${allData.family.state}, ${allData.family.country}`);
+    // Header
+    doc.fontSize(22).font("Helvetica-Bold").text("Pollinate Family Data Export", { align: "center" });
+    doc.fontSize(12).font("Helvetica").text(`Generated on ${new Date().toLocaleDateString()}`, { align: "center" });
+    doc.moveDown(2);
+    
+    // Family Information
+    doc.fontSize(16).font("Helvetica-Bold").text("Family Information");
+    doc.fontSize(12).font("Helvetica");
+    doc.text(`Family Name: ${allData.family.familyName}`);
+    doc.text(`Location: ${allData.family.city}, ${allData.family.state}, ${allData.family.country}`);
+    doc.text(`Address: ${allData.family.address}`);
+    doc.text(`Travel Radius: ${allData.family.travelRadiusMinutes} minutes`);
     doc.moveDown();
     
-    doc.fontSize(16).text("Children:");
-    allData.children.forEach((child) => {
-      doc.fontSize(12).text(`• ${child.name} (born ${child.birthdate})`);
-      doc.fontSize(10).text(`  Interests: ${child.interests.join(", ")}`);
+    // Children
+    doc.fontSize(16).font("Helvetica-Bold").text("Children");
+    doc.fontSize(12).font("Helvetica");
+    allData.children.forEach((child, index) => {
+      doc.text(`${index + 1}. ${child.name} (born ${child.birthdate})`);
+      doc.fontSize(10).text(`   Interests: ${child.interests.join(", ")}`, { indent: 20 });
+      if (child.learningStyle) {
+        doc.text(`   Learning Style: ${child.learningStyle}`, { indent: 20 });
+      }
+      doc.moveDown(0.5);
     });
-    
+    doc.fontSize(12);
     doc.moveDown();
-    doc.fontSize(16).text(`Journal Entries: ${allData.journalEntries.length}`);
-    doc.fontSize(16).text(`Curricula: ${allData.curricula.length}`);
+    
+    // Curricula Summary
+    doc.fontSize(16).font("Helvetica-Bold").text("Curriculum Overview");
+    doc.fontSize(12).font("Helvetica");
+    doc.text(`Total Curricula Generated: ${allData.curricula.length}`);
+    if (allData.curricula.length > 0) {
+      const activeCurriculum = allData.curricula.find(c => c.isActive);
+      if (activeCurriculum) {
+        doc.text(`Active Curriculum: Generated ${new Date(activeCurriculum.generatedAt!).toLocaleDateString()}`);
+      }
+    }
+    doc.moveDown();
+    
+    // Journal Entries Summary
+    doc.fontSize(16).font("Helvetica-Bold").text("Journal Entries");
+    doc.fontSize(12).font("Helvetica");
+    doc.text(`Total Journal Entries: ${allData.journalEntries.length}`);
+    if (allData.journalEntries.length > 0) {
+      const entriesWithPhotos = allData.journalEntries.filter(e => e.photoUrls && e.photoUrls.length > 0).length;
+      const entriesWithAudio = allData.journalEntries.filter(e => e.audioUrl).length;
+      doc.text(`Entries with Photos: ${entriesWithPhotos}`);
+      doc.text(`Entries with Voice Notes: ${entriesWithAudio}`);
+    }
+    doc.moveDown();
+    
+    // Activity Feedback Summary
+    doc.fontSize(16).font("Helvetica-Bold").text("Activity Feedback");
+    doc.fontSize(12).font("Helvetica");
+    doc.text(`Total Activity Feedback: ${allData.activityFeedback.length}`);
+    doc.moveDown();
+    
+    // Emerging Interests
+    doc.fontSize(16).font("Helvetica-Bold").text("Emerging Interests");
+    doc.fontSize(12).font("Helvetica");
+    doc.text(`Total Emerging Interest Signals: ${allData.emergingInterests.length}`);
+    doc.moveDown();
+    
+    // Local Opportunities
+    doc.fontSize(16).font("Helvetica-Bold").text("Local Opportunities");
+    doc.fontSize(12).font("Helvetica");
+    doc.text(`Total Local Opportunities: ${allData.localOpportunities.length}`);
+    doc.moveDown();
+    
+    // Footer
+    doc.fontSize(10).font("Helvetica").text(
+      "This export contains all your family's data from Pollinate. All media files (photos, audio) are included in the ZIP archive.",
+      { align: "center" }
+    );
     
     doc.end();
     

@@ -58,7 +58,7 @@ export default function Privacy() {
             <div className="flex items-start gap-3">
               <CheckCircle2 className="w-5 h-5 text-green-700 dark:text-green-500 mt-1 flex-shrink-0" />
               <p className="text-foreground">
-                Your data belongs to you. Contact us anytime to <strong>export or permanently delete your family's information</strong>.
+                You can <strong>download or permanently delete your family's data with one tap</strong> in Family Settings → Privacy & Data.
               </p>
             </div>
 
@@ -122,17 +122,17 @@ export default function Privacy() {
             <div className="space-y-1">
               <h3 className="font-medium">Export Your Data</h3>
               <p className="text-sm text-muted-foreground">
-                Your data belongs to you. Contact us at pollinatecurriculum@proton.me to request a complete export of your family's information in a standard format.
+                Download all your family's data with one tap in Family Settings → Privacy & Data. Get a complete ZIP file with photos, journals, and curricula as PDFs.
               </p>
             </div>
 
             <div className="space-y-1">
               <h3 className="font-medium flex items-center gap-2">
                 <Trash2 className="w-4 h-4" />
-                Delete Your Account
+                Delete Your Data
               </h3>
               <p className="text-sm text-muted-foreground">
-                You can request permanent deletion of your entire account and all associated data by contacting us at pollinatecurriculum@proton.me. Once confirmed, it's gone forever — no backups, no recovery.
+                You can instantly delete all photos and journal entries, or permanently remove your entire account with one tap in Family Settings → Privacy & Data. Once deleted, it's gone forever — no backups, no recovery.
               </p>
             </div>
           </CardContent>
