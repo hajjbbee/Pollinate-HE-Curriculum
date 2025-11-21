@@ -432,7 +432,7 @@ Return JSON in this EXACT structure (no markdown, no code blocks):
 
   const completion = await openai.chat.completions.create({
     model: "anthropic/claude-3.5-sonnet",
-    max_tokens: 16000,
+    max_tokens: 6000,
     temperature: 0.7,
     messages: [
       {
@@ -571,6 +571,7 @@ router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Respon
     }
 
     // Generate initial curriculum
+    let curriculumGenerationMessage = null;
     try {
       if (!process.env.OPENROUTER_API_KEY) {
         throw new Error("OpenRouter API key is not configured. Please set OPENROUTER_API_KEY environment variable.");
@@ -587,24 +588,27 @@ router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Respon
     } catch (aiError: any) {
       console.error("Curriculum generation error:", aiError);
       
-      // Check for specific error types
-      if (aiError.message?.includes("credit balance") || aiError.message?.includes("billing") || aiError.status === 402) {
-        return res.status(402).json({ 
-          error: "AI service has insufficient credits. Please add credits to your OpenRouter account at openrouter.ai or contact support." 
-        });
+      // Check for specific error types and set user-friendly messages
+      if (aiError.message?.includes("credit") || aiError.message?.includes("afford") || aiError.status === 402) {
+        curriculumGenerationMessage = "Curriculum generation temporarily unavailable. You can generate your curriculum later from Settings.";
+        console.error("OpenRouter credits exhausted. User can regenerate later.");
+      } else if (aiError.message?.includes("API key") || aiError.status === 401) {
+        curriculumGenerationMessage = "Curriculum generation configuration error. Please contact support.";
+        console.error("OpenRouter API key error.");
+      } else {
+        curriculumGenerationMessage = "Curriculum generation failed. You can regenerate from Settings.";
+        console.error("Unknown curriculum generation error:", aiError.message);
       }
       
-      if (aiError.message?.includes("API key") || aiError.status === 401) {
-        return res.status(500).json({
-          error: "AI service configuration error. Please contact support."
-        });
-      }
-      
-      // For other AI errors, still allow onboarding to complete
+      // Continue with onboarding completion despite curriculum generation failure
       console.warn("Curriculum generation failed, but onboarding will complete. User can regenerate later.");
     }
 
-    res.json({ family, children: createdChildren });
+    res.json({ 
+      family, 
+      children: createdChildren,
+      warning: curriculumGenerationMessage 
+    });
   } catch (error: any) {
     console.error("Onboarding error:", error);
     res.status(500).json({ error: error.message || "Failed to complete onboarding" });

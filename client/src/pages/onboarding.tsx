@@ -111,11 +111,19 @@ export default function Onboarding() {
       const response = await apiRequest("POST", "/api/onboarding", data);
       return await response.json();
     },
-    onSuccess: () => {
-      toast({
-        title: "Welcome to Pollinate!",
-        description: "Your family profile has been created. Generating your first curriculum...",
-      });
+    onSuccess: (data: any) => {
+      if (data.warning) {
+        toast({
+          title: "Welcome to Pollinate!",
+          description: data.warning,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Welcome to Pollinate!",
+          description: "Your family profile has been created. Generating your first curriculum...",
+        });
+      }
       navigate("/dashboard");
     },
     onError: (error: Error) => {
