@@ -212,7 +212,7 @@ export const upcomingEvents = pgTable("upcoming_events", {
 // Support tickets table
 export const supportTickets = pgTable("support_tickets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  familyId: varchar("family_id").notNull().references(() => families.id, { onDelete: "cascade" }),
+  familyId: varchar("family_id").references(() => families.id, { onDelete: "cascade" }),
   userEmail: varchar("user_email").notNull(),
   userName: varchar("user_name").notNull(),
   message: text("message").notNull(),

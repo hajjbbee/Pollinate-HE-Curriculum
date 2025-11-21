@@ -218,15 +218,23 @@ function Router() {
   );
 }
 
-export default function App() {
+function AppContent() {
   const { isAuthenticated } = useAuth();
+  
+  return (
+    <>
+      <Router />
+      <Toaster />
+      {isAuthenticated && <FloatingHelpButton />}
+    </>
+  );
+}
 
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Router />
-        <Toaster />
-        {isAuthenticated && <FloatingHelpButton />}
+        <AppContent />
       </TooltipProvider>
     </QueryClientProvider>
   );

@@ -29,7 +29,7 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
     },
     onSuccess: () => {
       toast({
-        title: "Message sent! ✨",
+        title: "Message sent!",
         description: "Got it! I'm a homeschool mum too — I'll reply within a few hours.",
       });
       setMessage("");
@@ -70,6 +70,15 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
     });
   };
 
+  const handleUploadError = (error: string) => {
+    setUploading(false);
+    toast({
+      title: "Upload failed",
+      description: error || "Please try again in a moment.",
+      variant: "destructive",
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -96,7 +105,7 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
           <TabsContent value="faqs" className="mt-4">
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="ai-learning" data-testid="faq-ai-learning">
-                <AccordionTrigger>
+                <AccordionTrigger data-testid="trigger-ai-learning">
                   How does the AI learn my child's interests?
                 </AccordionTrigger>
                 <AccordionContent>
@@ -112,7 +121,7 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
                       It's like having a teaching partner who's always paying attention!
                     </p>
                     <div className="mt-4 p-4 bg-muted rounded-md">
-                      <p className="text-sm font-medium">📹 Watch the 60-second guide:</p>
+                      <p className="text-sm font-medium">Watch the 60-second guide:</p>
                       <div className="mt-2 aspect-video bg-muted-foreground/10 rounded flex items-center justify-center text-sm">
                         [Loom video placeholder: How AI learns your child's interests]
                       </div>
@@ -122,7 +131,7 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
               </AccordionItem>
 
               <AccordionItem value="change-settings" data-testid="faq-change-settings">
-                <AccordionTrigger>
+                <AccordionTrigger data-testid="trigger-change-settings">
                   How do I change my address or add a child?
                 </AccordionTrigger>
                 <AccordionContent>
@@ -136,7 +145,7 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
                       local opportunities near your updated address. Give it about 30 seconds to work its magic!
                     </p>
                     <div className="mt-4 p-4 bg-muted rounded-md">
-                      <p className="text-sm font-medium">📹 Watch the 60-second guide:</p>
+                      <p className="text-sm font-medium">Watch the 60-second guide:</p>
                       <div className="mt-2 aspect-video bg-muted-foreground/10 rounded flex items-center justify-center text-sm">
                         [Loom video placeholder: Editing family settings]
                       </div>
@@ -146,7 +155,7 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
               </AccordionItem>
 
               <AccordionItem value="events-not-showing" data-testid="faq-events-not-showing">
-                <AccordionTrigger>
+                <AccordionTrigger data-testid="trigger-events-not-showing">
                   Why isn't a local event showing up?
                 </AccordionTrigger>
                 <AccordionContent>
@@ -165,7 +174,7 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
                       the event URL and pasting it into the "Capture This Interest" section in your Journal!
                     </p>
                     <div className="mt-4 p-4 bg-muted rounded-md">
-                      <p className="text-sm font-medium">📹 Watch the 60-second guide:</p>
+                      <p className="text-sm font-medium">Watch the 60-second guide:</p>
                       <div className="mt-2 aspect-video bg-muted-foreground/10 rounded flex items-center justify-center text-sm">
                         [Loom video placeholder: Why events aren't showing]
                       </div>
@@ -175,7 +184,7 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
               </AccordionItem>
 
               <AccordionItem value="regenerate-week" data-testid="faq-regenerate-week">
-                <AccordionTrigger>
+                <AccordionTrigger data-testid="trigger-regenerate-week">
                   How do I regenerate a week?
                 </AccordionTrigger>
                 <AccordionContent>
@@ -194,7 +203,7 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
                       and recent journal entries. Takes about 20-30 seconds!
                     </p>
                     <div className="mt-4 p-4 bg-muted rounded-md">
-                      <p className="text-sm font-medium">📹 Watch the 60-second guide:</p>
+                      <p className="text-sm font-medium">Watch the 60-second guide:</p>
                       <div className="mt-2 aspect-video bg-muted-foreground/10 rounded flex items-center justify-center text-sm">
                         [Loom video placeholder: Regenerating a week]
                       </div>
@@ -203,8 +212,39 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
                 </AccordionContent>
               </AccordionItem>
 
+              <AccordionItem value="today-view" data-testid="faq-today-view">
+                <AccordionTrigger data-testid="trigger-today-view">
+                  How do I use the Today view?
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3 text-muted-foreground">
+                    <p>
+                      The Today view is your daily dashboard! It shows exactly what's planned 
+                      for today across all your children. You can:
+                    </p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li>See all activities scheduled for today in one place</li>
+                      <li>Mark activities as complete with a tap</li>
+                      <li>Add emoji reactions to show how each activity went</li>
+                      <li>Upload photos of your child's work or discoveries</li>
+                      <li>Record quick voice notes about what happened</li>
+                    </ul>
+                    <p className="mt-2">
+                      Think of it as your daily homeschool companion — start here each morning 
+                      to see what's ahead, and come back throughout the day to capture the magic as it happens!
+                    </p>
+                    <div className="mt-4 p-4 bg-muted rounded-md">
+                      <p className="text-sm font-medium">Watch the 60-second guide:</p>
+                      <div className="mt-2 aspect-video bg-muted-foreground/10 rounded flex items-center justify-center text-sm">
+                        [Loom video placeholder: Using the Today view]
+                      </div>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
               <AccordionItem value="journaling" data-testid="faq-journaling">
-                <AccordionTrigger>
+                <AccordionTrigger data-testid="trigger-journaling">
                   How does journaling work?
                 </AccordionTrigger>
                 <AccordionContent>
@@ -216,8 +256,8 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
                       <div>
                         <p className="font-medium text-foreground">1. Today's Reflections (planned activities)</p>
                         <p className="text-sm">
-                          Mark activities complete, add emoji reactions (loved it 🌟, it was okay 🙂, 
-                          or skip for today 😅), upload photos, and record voice notes.
+                          Mark activities complete, add emoji reactions (loved it, it was okay, 
+                          or skip for today), upload photos, and record voice notes.
                         </p>
                       </div>
                       <div>
@@ -230,7 +270,7 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
                       </div>
                     </div>
                     <div className="mt-4 p-4 bg-muted rounded-md">
-                      <p className="text-sm font-medium">📹 Watch the 60-second guide:</p>
+                      <p className="text-sm font-medium">Watch the 60-second guide:</p>
                       <div className="mt-2 aspect-video bg-muted-foreground/10 rounded flex items-center justify-center text-sm">
                         [Loom video placeholder: How journaling works]
                       </div>
@@ -240,7 +280,7 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
               </AccordionItem>
 
               <AccordionItem value="export-portfolio" data-testid="faq-export-portfolio">
-                <AccordionTrigger>
+                <AccordionTrigger data-testid="trigger-export-portfolio">
                   How do I export a portfolio for state requirements?
                 </AccordionTrigger>
                 <AccordionContent>
@@ -260,7 +300,7 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
                       for a specific date range or the whole term!
                     </p>
                     <div className="mt-4 p-4 bg-muted rounded-md">
-                      <p className="text-sm font-medium">📹 Watch the 60-second guide:</p>
+                      <p className="text-sm font-medium">Watch the 60-second guide:</p>
                       <div className="mt-2 aspect-video bg-muted-foreground/10 rounded flex items-center justify-center text-sm">
                         [Loom video placeholder: Exporting portfolio for state requirements]
                       </div>
@@ -326,9 +366,17 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
                     maxFileSize={5 * 1024 * 1024}
                     onGetUploadParameters={async () => {
                       setUploading(true);
-                      const response = await fetch("/api/upload-url");
-                      const { method, url } = await response.json();
-                      return { method, url };
+                      try {
+                        const response = await fetch("/api/upload-url");
+                        if (!response.ok) {
+                          throw new Error("Failed to get upload URL");
+                        }
+                        const { method, url } = await response.json();
+                        return { method, url };
+                      } catch (error: any) {
+                        handleUploadError(error.message || "Failed to prepare upload");
+                        throw error;
+                      }
                     }}
                     onComplete={(result) => {
                       if (result.successful && result.successful.length > 0) {
@@ -336,10 +384,16 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
                         const url = uploadedFile.uploadURL?.split("?")[0];
                         if (url) {
                           handleUploadComplete(url);
+                        } else {
+                          handleUploadError("Upload completed but no URL returned");
                         }
+                      } else if (result.failed && result.failed.length > 0) {
+                        const failedFile = result.failed[0];
+                        handleUploadError(failedFile.error || "Upload failed");
                       }
                     }}
                     buttonClassName="w-full"
+                    data-testid="button-upload-screenshot"
                   >
                     <Upload className="w-4 h-4 mr-2" />
                     {uploading ? "Uploading..." : "Upload Screenshot"}

@@ -1102,9 +1102,6 @@ router.post("/api/support", isAuthenticated, async (req: Request, res: Response)
     }
 
     const family = await storage.getFamily(req.user.id);
-    if (!family) {
-      return res.status(404).json({ error: "Family not found" });
-    }
 
     const { message, screenshotUrl } = req.body;
 
@@ -1113,7 +1110,7 @@ router.post("/api/support", isAuthenticated, async (req: Request, res: Response)
     }
 
     const ticket = await storage.createSupportTicket({
-      familyId: family.id,
+      familyId: family?.id || null,
       userEmail: req.user.email || "unknown@pollinate.app",
       userName: `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() || "Pollinate User",
       message: message.trim(),
