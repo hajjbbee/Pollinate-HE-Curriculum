@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Sparkles, RefreshCw, Calendar, TrendingUp, MapPin, BookOpen, ExternalLink, Users, Zap, CalendarDays, Clock, DollarSign, Leaf, Gift, Copy, CheckCircle2, ShoppingBasket, Tag, ChevronRight, Settings } from "lucide-react";
+import { Sparkles, RefreshCw, Calendar, TrendingUp, MapPin, BookOpen, ExternalLink, Users, Zap, CalendarDays, Clock, DollarSign, Leaf, Gift, Copy, CheckCircle2, ShoppingBasket, Tag, ChevronRight, Settings, Printer } from "lucide-react";
 import { SiFacebook } from "react-icons/si";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { CurriculumData, WeekCurriculum, UpcomingEvent, JournalEntry, DailyActivity } from "@shared/schema";
@@ -132,6 +132,37 @@ export default function Dashboard() {
       toast({
         title: "Error",
         description: error.message || "Failed to regenerate week",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const { mutate: downloadWeek, isPending: isDownloadingWeek } = useMutation({
+    mutationFn: async (weekNumber: number) => {
+      const response = await fetch(`/api/curriculum/download-week?weekNumber=${weekNumber}`);
+      if (!response.ok) {
+        throw new Error("Failed to download week");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Week-${weekNumber}-Pollinate.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Downloaded!",
+        description: "Your week plan is ready to print or use on tablet ✨",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to download week",
         variant: "destructive",
       });
     },
@@ -353,8 +384,22 @@ export default function Dashboard() {
                   </Tooltip>
                 </div>
               )}
+              {currentWeekNumber !== null && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => downloadWeek(currentWeekNumber)}
+                  disabled={isDownloadingWeek}
+                  className="gap-2"
+                  data-testid="button-download-week"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span className="hidden md:inline">Download This Week</span>
+                  <span className="md:hidden">Download</span>
+                </Button>
+              )}
               <Link href="/family-settings">
-                <Button variant="default" size="sm" data-testid="button-edit-family">
+                <Button variant="outline" size="sm" data-testid="button-edit-family">
                   <Settings className="w-4 h-4 mr-2" />
                   <span className="hidden md:inline">Edit Family</span>
                 </Button>

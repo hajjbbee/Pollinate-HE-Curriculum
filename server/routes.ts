@@ -7,6 +7,8 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { createServer } from "http";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { CollaborationService } from "./websocket";
+import PDFDocument from "pdfkit";
+import { addDays, parseISO, format as formatDate } from "date-fns";
 
 const router = Router();
 
@@ -1400,6 +1402,446 @@ router.post("/api/curriculum/regenerate", isAuthenticated, async (req: Request, 
       message: error.message || "Failed to generate curriculum",
       code: "GENERATION_ERROR"
     });
+  }
+});
+
+// Download This Week - Generate beautiful printable PDF
+router.get("/api/curriculum/download-week", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const weekNumber = parseInt(req.query.weekNumber as string) || 1;
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const curriculum = await storage.getActiveCurriculum(family.id);
+    if (!curriculum) {
+      return res.status(404).json({ error: "No active curriculum found" });
+    }
+
+    const week = curriculum.curriculumData.weeks.find((w: any) => w.weekNumber === weekNumber);
+    if (!week) {
+      return res.status(404).json({ error: "Week not found" });
+    }
+
+    const children = await storage.getChildren(family.id);
+    
+    // Fetch events for this week (14-day window)
+    const startDate = parseISO(curriculum.curriculumData.generatedAt);
+    const weekStart = addDays(startDate, (weekNumber - 1) * 7);
+    const weekEnd = addDays(startDate, (weekNumber - 1) * 7 + 6);
+    const events = await storage.getUpcomingEventsForWeek(family.id, weekStart, weekEnd);
+
+    // Create PDF
+    const doc = new PDFDocument({ 
+      size: 'A4',
+      margins: { top: 50, bottom: 50, left: 50, right: 50 }
+    });
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Week-${weekNumber}-Pollinate.pdf"`);
+    
+    // Pipe PDF to response
+    doc.pipe(res);
+
+    // Sage green color
+    const sageGreen = '#8A9A5B';
+    const lightSage = '#E8EDE0';
+
+    // === COVER PAGE ===
+    doc.rect(0, 0, doc.page.width, doc.page.height).fill(lightSage);
+    
+    // Decorative border
+    doc.rect(30, 30, doc.page.width - 60, doc.page.height - 60)
+       .lineWidth(3)
+       .stroke(sageGreen);
+
+    // Title
+    doc.fillColor(sageGreen)
+       .fontSize(42)
+       .font('Helvetica-Bold')
+       .text('Pollinate', 70, 150, { align: 'center' });
+
+    doc.fillColor('#333333')
+       .fontSize(24)
+       .font('Helvetica')
+       .text(`Week ${weekNumber}`, 70, 210, { align: 'center' });
+
+    doc.fontSize(28)
+       .font('Helvetica-Bold')
+       .text(week.familyTheme || 'Learning Adventure', 70, 260, { align: 'center' });
+
+    // Family name
+    doc.fontSize(14)
+       .font('Helvetica')
+       .fillColor('#666666')
+       .text(family.familyName, 70, 340, { align: 'center' });
+
+    // Date range
+    doc.fontSize(12)
+       .text(`${formatDate(weekStart, 'MMM d')} – ${formatDate(weekEnd, 'MMM d, yyyy')}`, 70, 365, { align: 'center' });
+
+    // Friendly note at bottom
+    doc.fontSize(11)
+       .fillColor(sageGreen)
+       .font('Helvetica-Oblique')
+       .text('✨ Print or use on tablet — works offline all week ✨', 70, doc.page.height - 120, { 
+         align: 'center',
+         width: doc.page.width - 140
+       });
+
+    // === DAILY PLANS PAGE ===
+    doc.addPage();
+    
+    let yPos = 60;
+    
+    // Page header
+    doc.rect(0, 0, doc.page.width, 40).fill(sageGreen);
+    doc.fillColor('white')
+       .fontSize(18)
+       .font('Helvetica-Bold')
+       .text('This Week\'s Learning Plan', 50, 12);
+
+    yPos = 70;
+
+    // Loop through each child's activities
+    for (const child of children) {
+      const childActivities = week.childPlans?.find((p: any) => p.childName === child.name);
+      if (!childActivities) continue;
+
+      // Child name header
+      if (yPos > 700) {
+        doc.addPage();
+        yPos = 60;
+      }
+
+      doc.fillColor(sageGreen)
+         .fontSize(16)
+         .font('Helvetica-Bold')
+         .text(child.name, 50, yPos);
+      
+      yPos += 30;
+
+      // Daily activities
+      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+      for (let dayIdx = 0; dayIdx < 5; dayIdx++) {
+        const dayActivities = childActivities.dailyActivities?.[dayIdx];
+        if (!dayActivities) continue;
+
+        if (yPos > 650) {
+          doc.addPage();
+          yPos = 60;
+        }
+
+        // Day header with border
+        doc.rect(50, yPos, doc.page.width - 100, 25)
+           .fillAndStroke(lightSage, sageGreen);
+        
+        doc.fillColor('#333333')
+           .fontSize(12)
+           .font('Helvetica-Bold')
+           .text(days[dayIdx], 60, yPos + 7);
+
+        yPos += 35;
+
+        // Main activity
+        if (dayActivities.mainActivity) {
+          doc.fillColor('#333333')
+             .fontSize(11)
+             .font('Helvetica-Bold')
+             .text(dayActivities.mainActivity.title || 'Main Activity', 60, yPos);
+          
+          yPos += 18;
+
+          if (dayActivities.mainActivity.description) {
+            doc.fontSize(10)
+               .font('Helvetica')
+               .text(dayActivities.mainActivity.description, 60, yPos, { 
+                 width: doc.page.width - 120,
+                 align: 'left'
+               });
+            yPos += doc.heightOfString(dayActivities.mainActivity.description, { width: doc.page.width - 120 }) + 10;
+          }
+
+          // Confidence-boosting examples
+          if (dayActivities.mainActivity.examples && dayActivities.mainActivity.examples.length > 0) {
+            doc.fillColor(sageGreen)
+               .fontSize(9)
+               .font('Helvetica-Bold')
+               .text('Quick Ideas:', 60, yPos);
+            yPos += 15;
+
+            for (const example of dayActivities.mainActivity.examples.slice(0, 3)) {
+              if (yPos > 700) {
+                doc.addPage();
+                yPos = 60;
+              }
+
+              doc.fillColor('#666666')
+                 .fontSize(8)
+                 .font('Helvetica-Bold')
+                 .text(`• ${example.difficulty}:`, 70, yPos);
+              
+              yPos += 12;
+
+              doc.fillColor('#333333')
+                 .fontSize(8)
+                 .font('Helvetica')
+                 .text(example.description, 80, yPos, { width: doc.page.width - 140 });
+              
+              yPos += doc.heightOfString(example.description, { width: doc.page.width - 140 }) + 8;
+            }
+          }
+        }
+
+        yPos += 10;
+      }
+
+      yPos += 15;
+    }
+
+    // === MATERIALS & SHOPPING LIST PAGE ===
+    doc.addPage();
+    
+    doc.rect(0, 0, doc.page.width, 40).fill(sageGreen);
+    doc.fillColor('white')
+       .fontSize(18)
+       .font('Helvetica-Bold')
+       .text('Materials & Shopping List', 50, 12);
+
+    yPos = 70;
+
+    if (week.resources && week.resources.length > 0) {
+      // Group by category
+      const freeResources = week.resources.filter((r: any) => 
+        r.cost === 'Free' || r.category === 'household-items' || r.category === 'nature-materials'
+      );
+      const lowCostResources = week.resources.filter((r: any) => 
+        r.cost === 'Low Cost' && r.category !== 'household-items' && r.category !== 'nature-materials'
+      );
+      const otherResources = week.resources.filter((r: any) => 
+        r.cost !== 'Free' && r.cost !== 'Low Cost' && r.category !== 'household-items' && r.category !== 'nature-materials'
+      );
+
+      // Free & Recycled (highlighted)
+      if (freeResources.length > 0) {
+        doc.rect(50, yPos, doc.page.width - 100, 30)
+           .fillAndStroke('#E8F5E9', '#4CAF50');
+        
+        doc.fillColor('#2E7D32')
+           .fontSize(14)
+           .font('Helvetica-Bold')
+           .text('🌿 Free & Around the House', 60, yPos + 8);
+        
+        yPos += 40;
+
+        for (const resource of freeResources) {
+          if (yPos > 720) {
+            doc.addPage();
+            yPos = 60;
+          }
+
+          doc.fillColor('#333333')
+             .fontSize(10)
+             .font('Helvetica')
+             .text(`• ${resource.title}${resource.description ? ' - ' + resource.description : ''}`, 60, yPos, {
+               width: doc.page.width - 120
+             });
+          yPos += doc.heightOfString(`• ${resource.title}${resource.description ? ' - ' + resource.description : ''}`, { width: doc.page.width - 120 }) + 8;
+        }
+
+        yPos += 15;
+      }
+
+      // Low Cost
+      if (lowCostResources.length > 0) {
+        doc.fillColor(sageGreen)
+           .fontSize(13)
+           .font('Helvetica-Bold')
+           .text('💰 Low Cost', 50, yPos);
+        
+        yPos += 25;
+
+        for (const resource of lowCostResources) {
+          if (yPos > 720) {
+            doc.addPage();
+            yPos = 60;
+          }
+
+          doc.fillColor('#333333')
+             .fontSize(10)
+             .font('Helvetica')
+             .text(`• ${resource.title}${resource.description ? ' - ' + resource.description : ''}`, 60, yPos, {
+               width: doc.page.width - 120
+             });
+          yPos += doc.heightOfString(`• ${resource.title}${resource.description ? ' - ' + resource.description : ''}`, { width: doc.page.width - 120 }) + 8;
+        }
+      }
+    } else {
+      doc.fillColor('#666666')
+         .fontSize(11)
+         .font('Helvetica-Oblique')
+         .text('No specific materials needed this week — use what you have at home!', 60, yPos);
+    }
+
+    // === LOCAL HAPPENINGS PAGE ===
+    if (events && events.length > 0) {
+      doc.addPage();
+      
+      doc.rect(0, 0, doc.page.width, 40).fill(sageGreen);
+      doc.fillColor('white')
+         .fontSize(18)
+         .font('Helvetica-Bold')
+         .text('Local Happenings This Week', 50, 12);
+
+      yPos = 70;
+
+      for (const event of events.slice(0, 10)) {
+        if (yPos > 680) {
+          doc.addPage();
+          yPos = 60;
+        }
+
+        // Event box
+        doc.rect(50, yPos, doc.page.width - 100, 'auto')
+           .lineWidth(1)
+           .stroke(sageGreen);
+
+        // Event name
+        doc.fillColor('#333333')
+           .fontSize(12)
+           .font('Helvetica-Bold')
+           .text(event.name, 60, yPos + 10, { width: doc.page.width - 120 });
+        
+        let eventY = yPos + 10 + doc.heightOfString(event.name, { width: doc.page.width - 120 }) + 5;
+
+        // Date & time
+        if (event.startDate) {
+          doc.fontSize(9)
+             .font('Helvetica')
+             .fillColor('#666666')
+             .text(`📅 ${formatDate(parseISO(event.startDate), 'EEE, MMM d')}${event.startTime ? ' at ' + event.startTime : ''}`, 60, eventY);
+          eventY += 15;
+        }
+
+        // Location
+        if (event.location) {
+          doc.text(`📍 ${event.location}`, 60, eventY, { width: doc.page.width - 120 });
+          eventY += doc.heightOfString(event.location, { width: doc.page.width - 120 }) + 5;
+        }
+
+        // Why it fits
+        if (event.whyItFits) {
+          doc.fillColor(sageGreen)
+             .fontSize(8)
+             .font('Helvetica-Oblique')
+             .text(`💡 ${event.whyItFits}`, 60, eventY, { width: doc.page.width - 120 });
+          eventY += doc.heightOfString(event.whyItFits, { width: doc.page.width - 120 }) + 5;
+        }
+
+        yPos = eventY + 20;
+      }
+    }
+
+    // === JOURNAL PAGES (3 pages) ===
+    for (let i = 0; i < 3; i++) {
+      doc.addPage();
+      
+      doc.rect(0, 0, doc.page.width, 40).fill(lightSage);
+      doc.fillColor(sageGreen)
+         .fontSize(16)
+         .font('Helvetica-Bold')
+         .text('Journal & Reflections', 50, 12);
+
+      // Date line
+      doc.fillColor('#666666')
+         .fontSize(10)
+         .font('Helvetica')
+         .text('Date: ______________________    Child: ______________________', 50, 60);
+
+      // Ruled lines for writing
+      yPos = 100;
+      while (yPos < doc.page.height - 150) {
+        doc.moveTo(50, yPos)
+           .lineTo(doc.page.width - 50, yPos)
+           .stroke('#CCCCCC');
+        yPos += 20;
+      }
+
+      // Drawing/sketch box at bottom
+      doc.rect(50, doc.page.height - 130, doc.page.width - 100, 80)
+         .lineWidth(1)
+         .stroke(sageGreen);
+      
+      doc.fillColor('#999999')
+         .fontSize(9)
+         .font('Helvetica-Oblique')
+         .text('Sketch or doodle space', 60, doc.page.height - 120);
+    }
+
+    // === NARRATION PROMPTS PAGE ===
+    doc.addPage();
+    
+    doc.rect(0, 0, doc.page.width, 40).fill(sageGreen);
+    doc.fillColor('white')
+       .fontSize(18)
+       .font('Helvetica-Bold')
+       .text('Narration & Discussion Prompts', 50, 12);
+
+    yPos = 70;
+
+    const narrationPrompts = [
+      "Tell me about something interesting you learned today...",
+      "What was your favourite part of this activity?",
+      "If you could teach someone else about this, what would you say?",
+      "What questions do you still have?",
+      "How does this connect to something you already know?",
+      "What would you like to explore more deeply?",
+      "Describe what you made/discovered in your own words...",
+      "What surprised you today?"
+    ];
+
+    for (const prompt of narrationPrompts) {
+      if (yPos > 700) {
+        doc.addPage();
+        yPos = 60;
+      }
+
+      doc.fillColor(sageGreen)
+         .fontSize(12)
+         .font('Helvetica-Bold')
+         .text('❓', 50, yPos);
+
+      doc.fillColor('#333333')
+         .fontSize(11)
+         .font('Helvetica')
+         .text(prompt, 70, yPos, { width: doc.page.width - 120 });
+      
+      yPos += 25;
+
+      // Lines for response
+      for (let i = 0; i < 3; i++) {
+        doc.moveTo(70, yPos)
+           .lineTo(doc.page.width - 50, yPos)
+           .stroke('#DDDDDD');
+        yPos += 18;
+      }
+
+      yPos += 10;
+    }
+
+    // Finalize PDF
+    doc.end();
+
+  } catch (error: any) {
+    console.error("PDF generation error:", error);
+    res.status(500).json({ error: error.message || "Failed to generate PDF" });
   }
 });
 
