@@ -421,17 +421,34 @@ export interface WeekActivity {
   dates: string;
 }
 
+export interface ConfidenceExample {
+  title: string;
+  description: string;
+  ageRange?: string;
+}
+
+export interface ActivityWithExamples {
+  activity: string;
+  examples?: {
+    quickEasy: ConfidenceExample;
+    mediumAdventure: ConfidenceExample;
+    deepDive: ConfidenceExample;
+  };
+}
+
+export type DailyActivity = string | ActivityWithExamples;
+
 export interface ChildWeekPlan {
   childId: string;
   name: string;
   age: number;
   deepDives: string[];
   dailyPlan: {
-    Monday: string[];
-    Tuesday: string[];
-    Wednesday: string[];
-    Thursday: string[];
-    Friday: string[];
+    Monday: DailyActivity[];
+    Tuesday: DailyActivity[];
+    Wednesday: DailyActivity[];
+    Thursday: DailyActivity[];
+    Friday: DailyActivity[];
     Weekend: string;
   };
   masteryUpdates: Record<string, string>;

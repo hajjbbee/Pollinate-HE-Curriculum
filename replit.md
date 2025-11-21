@@ -27,6 +27,8 @@ The platform features a comprehensive settings page for family details, children
 ### Technical Implementations
 Smart children management ensures data integrity during updates. Automatic curriculum regeneration is triggered by settings changes, including clearing local opportunities and fetching new ones. Production-ready error handling is implemented across frontend and backend, with specific user feedback for issues like credit exhaustion or API failures. API optimizations reduce token usage for AI services. Real-time events are cached and displayed for a 14-day window from multiple sources, including manual Facebook group event integration.
 
+**Expandable Activity Cards with Confidence-Boosting Examples**: Each learning activity in Today's Plan, This Week view, and the 12-week accordion displays as a beautiful expandable card. When clicked, activities reveal 3 confidence-boosting examples at different difficulty levels: Quick & Easy (5-15 min, household items), Medium Adventure (20-45 min, low-cost/free), and Deep-Dive Rabbit Hole (1-3 hours or multi-day). Each example includes age ranges and practical hands-on instructions, designed to eliminate "I don't know how to do this" paralysis and empower mums to journal more confidently. The AI curriculum generation now includes these examples for all main learning activities, following a structured template to ensure quality and consistency.
+
 ## External Dependencies
 
 ### AI Services

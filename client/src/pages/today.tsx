@@ -7,12 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, Users, User, MapPin, Mic, CheckCircle2, Check, X, Flame } from "lucide-react";
+import { Sparkles, Users, User, MapPin, Mic, Check, X, Flame } from "lucide-react";
 import { useState, useEffect } from "react";
-import type { WeekCurriculum } from "@shared/schema";
+import type { WeekCurriculum, DailyActivity } from "@shared/schema";
 import { format, startOfWeek } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { triggerSubtleConfetti, triggerStreakConfetti } from "@/lib/confetti";
+import { ExpandableActivityCard } from "@/components/ExpandableActivityCard";
 
 export default function Today() {
   const { user } = useAuth();
@@ -228,9 +229,9 @@ export default function Today() {
   // Get today's activities
   const familyActivity = currentWeek.familyActivities?.[0];
   const childrenActivities = currentWeek.children?.map(child => {
-    let activities: string[] | string | null = null;
+    let activities: DailyActivity[] | string | null = null;
     if (todayName !== "Sunday" && todayName !== "Saturday") {
-      const dayPlan = child.dailyPlan as Record<string, string[] | string>;
+      const dayPlan = child.dailyPlan as Record<string, DailyActivity[] | string>;
       activities = dayPlan?.[todayName];
     }
     return {
@@ -314,62 +315,35 @@ export default function Today() {
           <CardContent className="space-y-4">
             {/* Family Activity */}
             {familyActivity && (
-              <div className="flex items-start gap-4 p-4 rounded-lg bg-card hover-elevate border border-border">
-                <Checkbox
-                  id="family-activity"
-                  checked={completedActivities.has("family-activity")}
-                  onCheckedChange={() => toggleActivity("family-activity", totalActivities)}
-                  className="mt-1 h-8 w-8 rounded-full data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                  data-testid="checkbox-family-activity"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Users className="w-4 h-4 text-primary" />
-                    <Badge variant="secondary" className="text-xs">
-                      Family Time
-                    </Badge>
-                  </div>
-                  <label
-                    htmlFor="family-activity"
-                    className={`text-base font-medium cursor-pointer ${
-                      completedActivities.has("family-activity") ? "line-through text-muted-foreground" : ""
-                    }`}
-                  >
-                    {familyActivity}
-                  </label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 px-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  <Badge variant="secondary" className="text-xs">
+                    Family Time
+                  </Badge>
                 </div>
+                <ExpandableActivityCard
+                  activity={familyActivity}
+                  completed={completedActivities.has("family-activity")}
+                  onToggleComplete={() => toggleActivity("family-activity", totalActivities)}
+                />
               </div>
             )}
 
             {/* Individual Child Activities */}
             {childrenActivities?.map((child, idx) => (
-              <div 
-                key={child.childId}
-                className="flex items-start gap-4 p-4 rounded-lg bg-card hover-elevate border border-border"
-              >
-                <Checkbox
-                  id={`child-activity-${child.childId}`}
-                  checked={completedActivities.has(`child-${child.childId}`)}
-                  onCheckedChange={() => toggleActivity(`child-${child.childId}`, totalActivities)}
-                  className="mt-1 h-8 w-8 rounded-full data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                  data-testid={`checkbox-child-activity-${idx}`}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <User className="w-4 h-4 text-primary" />
-                    <Badge variant="outline" className="text-xs">
-                      {child.name}
-                    </Badge>
-                  </div>
-                  <label
-                    htmlFor={`child-activity-${child.childId}`}
-                    className={`text-base font-medium cursor-pointer ${
-                      completedActivities.has(`child-${child.childId}`) ? "line-through text-muted-foreground" : ""
-                    }`}
-                  >
-                    {child.activity}
-                  </label>
+              <div key={child.childId} className="space-y-2">
+                <div className="flex items-center gap-2 px-2">
+                  <User className="w-4 h-4 text-primary" />
+                  <Badge variant="outline" className="text-xs">
+                    {child.name}
+                  </Badge>
                 </div>
+                <ExpandableActivityCard
+                  activity={child.activity}
+                  completed={completedActivities.has(`child-${child.childId}`)}
+                  onToggleComplete={() => toggleActivity(`child-${child.childId}`, totalActivities)}
+                />
               </div>
             ))}
 
@@ -382,7 +356,7 @@ export default function Today() {
                 <Checkbox
                   id={`event-${idx}`}
                   checked={completedActivities.has(`event-${idx}`)}
-                  onCheckedChange={() => toggleActivity(`event-${idx}`)}
+                  onCheckedChange={() => toggleActivity(`event-${idx}`, totalActivities)}
                   className="mt-1 h-8 w-8 rounded-full data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                   data-testid={`checkbox-event-${idx}`}
                 />

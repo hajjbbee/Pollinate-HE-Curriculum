@@ -1,0 +1,33 @@
+When showing any daily/weekly activity (in Today’s Plan, This Week view, or the 12-week accordion), display it as a beautiful expandable card.
+
+Default view (collapsed):
+• The activity title (e.g. “Explore how mountains are formed”)
+
+When mom taps it, expand to show:
+→ The original AI activity  
+→ A new section: “3 Confidence-Boosting Examples” (always 3, always different difficulty/interest levels)
+
+Make the 3 examples follow this exact template every time:
+
+1. Quick & Easy (5–15 min, household items)  
+   → “Grab a tray of sand or dirt. Build a small hill and slowly pour water on one side — watch erosion create valleys in real time!”
+
+2. Medium Adventure (20–45 min, low-cost or free)  
+   → “Head to a local park or hiking trail. Look for different rock layers on a hill cut-away. Take photos and compare to library books about plate tectonics.”
+
+3. Deep-Dive Rabbit Hole (1–3 hours OR multi-day project)  
+   → “Make a working volcano model with baking soda, vinegar, and food colouring. Film it erupting from multiple angles, then edit a slow-motion video and label the geological processes (great for teens who love filming or chemistry).”
+
+Rules for the AI when generating these 3 examples:
+- Always use free or recycled materials when possible
+- Always give a clear age/skill range (e.g. “great for ages 4–8”, “teens will love the engineering challenge”)
+- Always end with a tiny confidence note: “You’ve got this — even 5 minutes counts as real learning ✨”
+- Prioritise hands-on, real-world, multi-sensory
+- If the activity is a read-aloud or video, give 3 different book/video options instead (free YouTube, Librivox, library suggestions)
+
+Design:
+- Calm sage-green expand/collapse chevron
+- Little light-bulb icon next to “3 Confidence-Boosting Examples”
+- Examples numbered with cute icons (seedling for easy, sunflower for medium, oak tree for deep-dive)
+
+This removes 90% of “I don’t know how to do this” paralysis and turns hesitant moms into confident ones → they journal more → AI gets smarter → they never cancel.

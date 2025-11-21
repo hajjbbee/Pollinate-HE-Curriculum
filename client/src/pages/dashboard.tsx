@@ -15,9 +15,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Sparkles, RefreshCw, Calendar, TrendingUp, MapPin, BookOpen, ExternalLink, Users, Zap, CalendarDays, Clock, DollarSign, Leaf, Gift, Copy, CheckCircle2, ShoppingBasket, Tag, ChevronRight, Settings } from "lucide-react";
 import { SiFacebook } from "react-icons/si";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { CurriculumData, WeekCurriculum, UpcomingEvent, JournalEntry } from "@shared/schema";
+import type { CurriculumData, WeekCurriculum, UpcomingEvent, JournalEntry, DailyActivity } from "@shared/schema";
 import { Link } from "wouter";
 import { format, addDays, startOfWeek, eachWeekOfInterval, isSameWeek, parseISO } from "date-fns";
+import { ExpandableActivityCard } from "@/components/ExpandableActivityCard";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -599,14 +600,14 @@ export default function Dashboard() {
                                         </AccordionTrigger>
                                         <AccordionContent>
                                           {Array.isArray(activities) ? (
-                                            <ul className="space-y-2 pl-4">
+                                            <div className="space-y-2">
                                               {activities.map((activity, idx) => (
-                                                <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
-                                                  <ChevronRight className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
-                                                  <span>{activity}</span>
-                                                </li>
+                                                <ExpandableActivityCard
+                                                  key={idx}
+                                                  activity={activity}
+                                                />
                                               ))}
-                                            </ul>
+                                            </div>
                                           ) : (
                                             <p className="text-sm text-muted-foreground pl-4">{activities}</p>
                                           )}

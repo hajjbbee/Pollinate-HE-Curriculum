@@ -3,9 +3,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, User } from "lucide-react";
-import type { WeekCurriculum } from "@shared/schema";
+import { Users, User } from "lucide-react";
+import type { WeekCurriculum, DailyActivity } from "@shared/schema";
 import { format, startOfWeek } from "date-fns";
+import { ExpandableActivityCard } from "@/components/ExpandableActivityCard";
 
 export default function ThisWeek() {
   const { user } = useAuth();
@@ -87,9 +88,10 @@ export default function ThisWeek() {
           </CardHeader>
           <CardContent className="space-y-2">
             {currentWeek.familyActivities?.map((activity, idx) => (
-              <div key={idx} className="p-3 rounded-lg bg-muted/50 border border-border">
-                <p className="text-sm">{activity}</p>
-              </div>
+              <ExpandableActivityCard
+                key={idx}
+                activity={activity}
+              />
             ))}
           </CardContent>
         </Card>
@@ -122,11 +124,12 @@ export default function ThisWeek() {
                 return (
                   <div key={day}>
                     <h4 className="font-semibold text-sm mb-2">{day}</h4>
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       {Array.isArray(activities) ? activities.map((activity, idx) => (
-                        <p key={idx} className="text-sm text-muted-foreground pl-4 border-l-2 border-primary/30">
-                          {activity}
-                        </p>
+                        <ExpandableActivityCard
+                          key={idx}
+                          activity={activity}
+                        />
                       )) : (
                         <p className="text-sm text-muted-foreground">{activities}</p>
                       )}

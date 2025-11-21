@@ -277,6 +277,13 @@ REQUIREMENTS:
 3. For each child, provide:
    - 2-3 "deep dives" (high-interest topics to explore deeply)
    - Daily plan (Monday-Friday with specific activities, Weekend summary)
+   - CRITICAL: For each main learning activity (not simple tasks like "read aloud"), include 3 confidence-boosting examples:
+     * Quick & Easy (5-15 min, household items): Simple hands-on activity using recycled/household materials
+     * Medium Adventure (20-45 min, low-cost or free): Outdoor or community-based activity
+     * Deep-Dive Rabbit Hole (1-3 hours OR multi-day): Extended project perfect for high-interest deep work
+     * Each example MUST include age range (e.g., "great for ages 4-8", "brilliant for ages 12+")
+     * Prioritise hands-on, real-world, multi-sensory approaches
+     * For read-alouds or videos, provide 3 different book/video options (YouTube, Librivox, library)
    - Mastery updates (3-5 subjects with current level: Exposure, Developing, Strong, Mastery, or Mentor)
 4. Include 3-8 local opportunities per week with:
    - Name and address
@@ -317,7 +324,30 @@ Return JSON in this EXACT structure (no markdown, no code blocks):
           "age": ${childrenInfo[0]?.age},
           "deepDives": ["Bird identification", "Stream ecosystems"],
           "dailyPlan": {
-            "Monday": ["Morning nature walk", "Sketch birds observed", "Read nature journal entries"],
+            "Monday": [
+              {
+                "activity": "Explore how mountains are formed",
+                "examples": {
+                  "quickEasy": {
+                    "title": "Quick & Easy (5-15 min, household items)",
+                    "description": "Grab a tray of sand or dirt. Build a small hill and slowly pour water on one side — watch erosion create valleys in real time!",
+                    "ageRange": "great for ages 4-8"
+                  },
+                  "mediumAdventure": {
+                    "title": "Medium Adventure (20-45 min, low-cost or free)",
+                    "description": "Head to a local park or hiking trail. Look for different rock layers on a hill cut-away. Take photos and compare to library books about plate tectonics.",
+                    "ageRange": "perfect for ages 8-12"
+                  },
+                  "deepDive": {
+                    "title": "Deep-Dive Rabbit Hole (1-3 hours OR multi-day project)",
+                    "description": "Make a working volcano model with baking soda, vinegar, and food colouring. Film it erupting from multiple angles, then edit a slow-motion video and label the geological processes (great for teens who love filming or chemistry).",
+                    "ageRange": "brilliant for ages 12+"
+                  }
+                }
+              },
+              "Morning nature walk",
+              "Sketch birds observed"
+            ],
             "Tuesday": ["Visit nature center", "Collect specimens", "Start nature journal"],
             "Wednesday": ["Stream study", "Water testing", "Draw stream life"],
             "Thursday": ["Bird watching", "Use field guides", "Track species"],
@@ -378,7 +408,7 @@ Return JSON in this EXACT structure (no markdown, no code blocks):
 
   const completion = await openai.chat.completions.create({
     model: "anthropic/claude-3.5-sonnet",
-    max_tokens: 1100,
+    max_tokens: 16000,
     temperature: 0.7,
     messages: [
       {
