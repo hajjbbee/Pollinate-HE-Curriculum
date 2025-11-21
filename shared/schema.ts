@@ -110,6 +110,9 @@ export const children = pgTable("children", {
   anxietyIntensity: integer("anxiety_intensity").default(0), // 0-10 scale
   isPerfectionist: boolean("is_perfectionist").notNull().default(false),
   
+  // High School Mode (ages 12+)
+  isHighSchoolMode: boolean("is_high_school_mode").notNull().default(false),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -122,6 +125,38 @@ export const children = pgTable("children", {
 //   createdAt: timestamp("created_at").defaultNow(),
 //   updatedAt: timestamp("updated_at").defaultNow(),
 // });
+
+// High School Transcript Courses
+export const transcriptCourses = pgTable("transcript_courses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  childId: varchar("child_id").notNull().references(() => children.id, { onDelete: "cascade" }),
+  courseTitle: varchar("course_title").notNull(), // e.g., "English 9: Literature & Composition"
+  subject: varchar("subject").notNull(), // "english", "math", "science", "history", "elective", etc.
+  gradeLevel: varchar("grade_level").notNull(), // "9", "10", "11", "12"
+  credits: real("credits").notNull().default(1.0), // Standard credits (0.5 = semester, 1.0 = year)
+  grade: varchar("grade"), // "A", "A-", "B+", "B", "Pass", etc.
+  courseDescription: text("course_description"), // College-board style description generated from activities
+  startDate: date("start_date"),
+  endDate: date("end_date"),
+  isComplete: boolean("is_complete").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Credit Mappings - Maps curriculum activities to academic credits
+export const creditMappings = pgTable("credit_mappings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  childId: varchar("child_id").notNull().references(() => children.id, { onDelete: "cascade" }),
+  curriculumId: varchar("curriculum_id").references(() => curricula.id, { onDelete: "cascade" }),
+  weekNumber: integer("week_number").notNull(),
+  activityTitle: text("activity_title").notNull(), // Activity from curriculum
+  subject: varchar("subject").notNull(), // "english", "math", "science", "history", "elective"
+  creditAmount: real("credit_amount").notNull(), // 0.25, 0.5, 1.0, etc.
+  isEdited: boolean("is_edited").notNull().default(false), // True if mum manually adjusted
+  courseId: varchar("course_id").references(() => transcriptCourses.id, { onDelete: "set null" }), // Link to transcript course
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
 // Curricula table (stores generated 12-week curricula)
 export const curricula = pgTable("curricula", {
@@ -437,6 +472,18 @@ export const insertChildSchema = createInsertSchema(children).omit({
   sensoryProfile: true, // Deprecated field - no longer collected via UI
 });
 
+export const insertTranscriptCourseSchema = createInsertSchema(transcriptCourses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCreditMappingSchema = createInsertSchema(creditMappings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertCurriculumSchema = createInsertSchema(curricula).omit({
   id: true,
   createdAt: true,
@@ -528,6 +575,12 @@ export type Family = typeof families.$inferSelect;
 
 export type InsertChild = z.infer<typeof insertChildSchema>;
 export type Child = typeof children.$inferSelect;
+
+export type InsertTranscriptCourse = z.infer<typeof insertTranscriptCourseSchema>;
+export type TranscriptCourse = typeof transcriptCourses.$inferSelect;
+
+export type InsertCreditMapping = z.infer<typeof insertCreditMappingSchema>;
+export type CreditMapping = typeof creditMappings.$inferSelect;
 
 export type InsertCurriculum = z.infer<typeof insertCurriculumSchema>;
 export type Curriculum = typeof curricula.$inferSelect;
