@@ -29,6 +29,8 @@ Smart children management ensures data integrity during updates. Automatic curri
 
 **Expandable Activity Cards with Confidence-Boosting Examples**: Each learning activity in Today's Plan, This Week view, and the 12-week accordion displays as a beautiful expandable card. When clicked, activities reveal 3 confidence-boosting examples at different difficulty levels: Quick & Easy (5-15 min, household items), Medium Adventure (20-45 min, low-cost/free), and Deep-Dive Rabbit Hole (1-3 hours or multi-day). Each example includes age ranges and practical hands-on instructions, designed to eliminate "I don't know how to do this" paralysis and empower mums to journal more confidently. The AI curriculum generation now includes these examples for all main learning activities, following a structured template to ensure quality and consistency.
 
+**Learning Approach Selector**: Families can choose from 8 educational philosophies (Perfect Blend, Charlotte Mason, Montessori, Waldorf/Steiner, Unschooling/Child-Led, Project-Based Learning, Nature-Based/Forest School, Gameschooling, STEAM/STEM) during onboarding (step 3) and update anytime in Settings. Each approach features beautiful illustrated cards explaining its core principles. "Perfect Blend" (recommended) leverages AI to seamlessly blend all pedagogies with balanced emphasis. The selected approach influences curriculum generation by prioritizing specific pedagogical principles while still incorporating elements from other approaches. Database tables (family_approaches, child_approaches) store single approach selections, with future support for per-child overrides.
+
 ## External Dependencies
 
 ### AI Services

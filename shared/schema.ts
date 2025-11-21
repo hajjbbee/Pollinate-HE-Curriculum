@@ -75,9 +75,7 @@ export type LearningApproach = typeof learningApproaches[number];
 export const familyApproaches = pgTable("family_approaches", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   familyId: varchar("family_id").notNull().unique().references(() => families.id, { onDelete: "cascade" }),
-  primaryApproach: varchar("primary_approach").notNull(), // Main pedagogy or "perfect-blend"
-  secondaryApproaches: text("secondary_approaches").array().default(sql`ARRAY[]::text[]`), // Additional pedagogies to blend
-  emphasis: jsonb("emphasis").default(sql`'{}'::jsonb`), // { "charlotte-mason": 0.4, "montessori": 0.3, "waldorf": 0.3 }
+  approach: varchar("approach").notNull(), // Selected pedagogy: "perfect-blend", "charlotte-mason", "montessori", etc.
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -94,16 +92,14 @@ export const children = pgTable("children", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Child-specific learning approach overrides
-export const childApproaches = pgTable("child_approaches", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  childId: varchar("child_id").notNull().unique().references(() => children.id, { onDelete: "cascade" }),
-  primaryApproach: varchar("primary_approach"), // Override family default if set
-  secondaryApproaches: text("secondary_approaches").array().default(sql`ARRAY[]::text[]`),
-  emphasis: jsonb("emphasis").default(sql`'{}'::jsonb`),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+// Child-specific learning approach overrides (Future feature - not yet implemented)
+// export const childApproaches = pgTable("child_approaches", {
+//   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//   childId: varchar("child_id").notNull().unique().references(() => children.id, { onDelete: "cascade" }),
+//   approach: varchar("approach").notNull(), // Per-child pedagogy override if different from family
+//   createdAt: timestamp("created_at").defaultNow(),
+//   updatedAt: timestamp("updated_at").defaultNow(),
+// });
 
 // Curricula table (stores generated 12-week curricula)
 export const curricula = pgTable("curricula", {
@@ -415,11 +411,12 @@ export const insertFamilyApproachSchema = createInsertSchema(familyApproaches).o
   updatedAt: true,
 });
 
-export const insertChildApproachSchema = createInsertSchema(childApproaches).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+// Future feature - commented out until per-child overrides are implemented
+// export const insertChildApproachSchema = createInsertSchema(childApproaches).omit({
+//   id: true,
+//   createdAt: true,
+//   updatedAt: true,
+// });
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -461,8 +458,9 @@ export type SupportTicket = typeof supportTickets.$inferSelect;
 export type InsertFamilyApproach = z.infer<typeof insertFamilyApproachSchema>;
 export type FamilyApproach = typeof familyApproaches.$inferSelect;
 
-export type InsertChildApproach = z.infer<typeof insertChildApproachSchema>;
-export type ChildApproach = typeof childApproaches.$inferSelect;
+// Future feature types - commented out until per-child overrides are implemented
+// export type InsertChildApproach = z.infer<typeof insertChildApproachSchema>;
+// export type ChildApproach = typeof childApproaches.$inferSelect;
 
 // Zod schemas for AI curriculum response validation
 export const confidenceExampleSchema = z.object({
