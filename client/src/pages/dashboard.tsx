@@ -254,11 +254,14 @@ export default function Dashboard() {
         <Sparkles className="w-12 h-12 text-primary mx-auto mb-4" />
         <h2 className="text-2xl font-heading font-bold mb-2">No Curriculum Yet</h2>
         <p className="text-muted-foreground mb-6">
-          Complete onboarding to generate your personalized curriculum
+          Your curriculum will be generated automatically. This may take a moment.
         </p>
-        <Link href="/onboarding">
-          <Button size="lg" data-testid="button-start-onboarding">
-            Start Onboarding
+        <p className="text-sm text-muted-foreground mb-6">
+          If it's taking too long, you can regenerate from Family Settings.
+        </p>
+        <Link href="/settings/family">
+          <Button size="lg" data-testid="button-goto-settings">
+            Go to Settings
           </Button>
         </Link>
       </div>
