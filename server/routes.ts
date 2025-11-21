@@ -239,11 +239,38 @@ async function generateCurriculum(
   const childrenInfo = children.map(child => {
     const birthDate = new Date(child.birthdate);
     const age = Math.floor((today.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    
+    // Collect learning needs profiles
+    const learningNeeds: string[] = [];
+    if (child.hasAdhd) {
+      learningNeeds.push(`ADHD (intensity ${child.adhdIntensity}/10) - needs shorter lessons, movement breaks, fidget ideas`);
+    }
+    if (child.hasAutism) {
+      const sensoryNote = child.sensoryProfile ? ` - ${child.sensoryProfile} sensory profile` : '';
+      learningNeeds.push(`Autism (intensity ${child.autismIntensity}/10)${sensoryNote} - needs visual schedules, predictability, sensory supports`);
+    }
+    if (child.isGifted) {
+      learningNeeds.push(`Gifted - benefits from advanced concepts, depth over breadth, interest-based intensity`);
+    }
+    if (child.is2e) {
+      learningNeeds.push(`2e (Twice Exceptional) - combine challenge with support, honor both giftedness and learning differences`);
+    }
+    if (child.hasDyslexia) {
+      learningNeeds.push(`Dyslexia (intensity ${child.dyslexiaIntensity}/10) - needs oral options, audiobooks, reduced written work`);
+    }
+    if (child.hasAnxiety) {
+      learningNeeds.push(`Anxiety (intensity ${child.anxietyIntensity}/10) - needs choice boards, reduced pressure, gentle encouragement`);
+    }
+    if (child.isPerfectionist) {
+      learningNeeds.push(`Perfectionism - needs growth mindset language, "good enough" practice, low-stakes attempts`);
+    }
+    
     return {
       name: child.name,
       age,
       interests: child.interests || [],
       learningStyle: child.learningStyle || "Mixed",
+      learningNeeds: learningNeeds.length > 0 ? learningNeeds : null,
     };
   });
   
@@ -321,6 +348,18 @@ Rules that must be followed in EVERY output:
 11. FAMILY THEMES - Unite siblings with shared themes while honoring individual paths
 12. LOCAL OPPORTUNITIES - Integrate real-world educational experiences
 
+NEURODIVERGENT ADAPTATIONS - When a child has learning needs, automatically adapt activities:
+• ADHD: Shorter lessons (10-15 min), built-in movement breaks every 20 minutes, fidget-friendly activities (play dough while listening, squeeze ball during reading), timer games, high-energy outdoor options
+• Autism: Visual schedules (picture cards showing the day), predictable routines, sensory supports (quiet space option, headphones, weighted blanket), clear start/end times, minimal transitions
+  - Sensory Seeking: Add heavy work (carrying books, pushing furniture), crunchy snacks, movement breaks, textured materials
+  - Sensory Avoiding: Offer quiet workspace, reduce visual clutter, gentle sounds, soft lighting, optional activities
+  - Mixed Profile: Provide both sensory seeking and avoiding options as choices
+• Gifted: Advanced concepts, depth over breadth, abstract thinking challenges, mentorship opportunities, passion projects that span weeks
+• 2e (Twice Exceptional): Combine advanced content with scaffolding, honor strengths while supporting challenges, allow multiple ways to demonstrate learning
+• Dyslexia: Oral response options, audiobooks (YouTube, Librivox), parent reads aloud, minimal writing requirements, voice-to-text, graphic novels
+• Anxiety: Choice boards (child picks 2 of 3 activities), low-stakes "try it" language, celebrate attempts not just success, gentle encouragement, no public performance pressure
+• Perfectionism: Growth mindset language ("mistakes are how we learn"), "good enough" practice, rough drafts celebrated, time limits to prevent overthinking
+
 When generating the 3 Confidence-Boosting Examples, explicitly draw from the pedagogies above and label them subtly with pedagogy icons:
 🎲 Gameschooling | 🍃 Nature/Waldorf | ⭐ Steiner Imaginative | 🎨 Art/STEAM | 🔍 Inquiry
 
@@ -337,7 +376,13 @@ FAMILY CONTEXT:
   → ${selectedApproach.emphasis}
 
 CHILDREN:
-${childrenInfo.map(child => `- ${child.name} (age ${child.age}): Interests: ${child.interests.join(", ")}; Learning style: ${child.learningStyle}`).join("\n")}
+${childrenInfo.map(child => {
+  let childDesc = `- ${child.name} (age ${child.age}): Interests: ${child.interests.join(", ")}; Learning style: ${child.learningStyle}`;
+  if (child.learningNeeds) {
+    childDesc += `\n  Learning Needs: ${child.learningNeeds.join("; ")}`;
+  }
+  return childDesc;
+}).join("\n")}
 
 LOCAL OPPORTUNITIES (sample):
 ${opportunitiesInfo.slice(0, 10).map(opp => `- ${opp.name} at ${opp.address}`).join("\n")}
@@ -657,6 +702,18 @@ router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Respon
         birthdate: childData.birthdate,
         interests: childData.interests || [],
         learningStyle: childData.learningStyle,
+        hasAdhd: childData.hasAdhd ?? false,
+        adhdIntensity: childData.adhdIntensity ?? 0,
+        hasAutism: childData.hasAutism ?? false,
+        autismIntensity: childData.autismIntensity ?? 0,
+        sensoryProfile: childData.sensoryProfile ?? null,
+        isGifted: childData.isGifted ?? false,
+        is2e: childData.is2e ?? false,
+        hasDyslexia: childData.hasDyslexia ?? false,
+        dyslexiaIntensity: childData.dyslexiaIntensity ?? 0,
+        hasAnxiety: childData.hasAnxiety ?? false,
+        anxietyIntensity: childData.anxietyIntensity ?? 0,
+        isPerfectionist: childData.isPerfectionist ?? false,
       });
       createdChildren.push(child);
     }
@@ -878,6 +935,18 @@ router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Re
           birthdate: childData.birthdate,
           interests: childData.interests,
           learningStyle: childData.learningStyle || null,
+          hasAdhd: childData.hasAdhd ?? false,
+          adhdIntensity: childData.adhdIntensity ?? 0,
+          hasAutism: childData.hasAutism ?? false,
+          autismIntensity: childData.autismIntensity ?? 0,
+          sensoryProfile: childData.sensoryProfile ?? null,
+          isGifted: childData.isGifted ?? false,
+          is2e: childData.is2e ?? false,
+          hasDyslexia: childData.hasDyslexia ?? false,
+          dyslexiaIntensity: childData.dyslexiaIntensity ?? 0,
+          hasAnxiety: childData.hasAnxiety ?? false,
+          anxietyIntensity: childData.anxietyIntensity ?? 0,
+          isPerfectionist: childData.isPerfectionist ?? false,
         });
         keptChildIds.add(childData.id);
       } else {
@@ -888,6 +957,18 @@ router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Re
           birthdate: childData.birthdate,
           interests: childData.interests,
           learningStyle: childData.learningStyle || null,
+          hasAdhd: childData.hasAdhd ?? false,
+          adhdIntensity: childData.adhdIntensity ?? 0,
+          hasAutism: childData.hasAutism ?? false,
+          autismIntensity: childData.autismIntensity ?? 0,
+          sensoryProfile: childData.sensoryProfile ?? null,
+          isGifted: childData.isGifted ?? false,
+          is2e: childData.is2e ?? false,
+          hasDyslexia: childData.hasDyslexia ?? false,
+          dyslexiaIntensity: childData.dyslexiaIntensity ?? 0,
+          hasAnxiety: childData.hasAnxiety ?? false,
+          anxietyIntensity: childData.anxietyIntensity ?? 0,
+          isPerfectionist: childData.isPerfectionist ?? false,
         });
         keptChildIds.add(newChild.id);
       }
