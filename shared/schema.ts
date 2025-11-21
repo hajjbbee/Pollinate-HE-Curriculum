@@ -127,6 +127,8 @@ export const journalEntries = pgTable("journal_entries", {
   aiFollowUpQuestions: text("ai_follow_up_questions").array(), // AI-generated reflection questions
   followUpAnswers: text("follow_up_answers").array(), // Mum's answers to follow-up questions
   aiAnalysis: jsonb("ai_analysis"), // Structured AI analysis: { summary, interests[], skills[], enthusiasm, notes }
+  subjects: text("subjects").array().default(sql`ARRAY[]::text[]`), // Subject tags for portfolio tracking (Math, Reading, Science, etc.)
+  elapsedMinutes: integer("elapsed_minutes"), // Time spent on this activity (for hour tracking)
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -260,6 +262,60 @@ export const supportTickets = pgTable("support_tickets", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// State requirements lookup table (static data for compliance)
+export const stateRequirements = pgTable("state_requirements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  stateCode: varchar("state_code", { length: 10 }).notNull().unique(), // e.g., "NSW", "VIC", "CA", "TX"
+  stateName: varchar("state_name").notNull(), // e.g., "New South Wales", "California"
+  countryCode: varchar("country_code", { length: 2 }).notNull(), // e.g., "AU", "US"
+  minimumDaysPerYear: integer("minimum_days_per_year"), // e.g., 180
+  minimumHoursPerYear: integer("minimum_hours_per_year"), // e.g., 900
+  requiredSubjects: jsonb("required_subjects").notNull(), // Array of {subject: string, hoursPerYear: number}
+  portfolioRequired: boolean("portfolio_required").notNull().default(false),
+  affidavitText: text("affidavit_text"), // Pre-filled affidavit statement
+  additionalNotes: text("additional_notes"), // Special requirements or notes
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Child portfolio years (per child/year configuration for compliance tracking)
+export const childPortfolioYears = pgTable("child_portfolio_years", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  childId: varchar("child_id").notNull().references(() => children.id, { onDelete: "cascade" }),
+  familyId: varchar("family_id").notNull().references(() => families.id, { onDelete: "cascade" }),
+  academicYear: varchar("academic_year").notNull(), // e.g., "2024-2025"
+  stateRequirementId: varchar("state_requirement_id").references(() => stateRequirements.id),
+  customSubjects: jsonb("custom_subjects"), // Optional: Override/add subjects beyond state requirements
+  guardianSignature: text("guardian_signature"), // Base64 signature image
+  signatureDate: date("signature_date"),
+  coverPhotoUrl: text("cover_photo_url"), // Optional child photo for portfolio cover
+  notes: text("notes"), // General notes for this academic year
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("child_year_unique").on(table.childId, table.academicYear),
+]);
+
+// Portfolio entries (weekly tracking aggregates)
+export const portfolioEntries = pgTable("portfolio_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  portfolioYearId: varchar("portfolio_year_id").notNull().references(() => childPortfolioYears.id, { onDelete: "cascade" }),
+  childId: varchar("child_id").notNull().references(() => children.id, { onDelete: "cascade" }),
+  familyId: varchar("family_id").notNull().references(() => families.id, { onDelete: "cascade" }),
+  weekStartDate: date("week_start_date").notNull(),
+  weekEndDate: date("week_end_date").notNull(),
+  subjectHours: jsonb("subject_hours").notNull(), // {Math: 5, Reading: 3, Science: 2, ...}
+  attendanceDays: integer("attendance_days").notNull().default(0), // Days attended this week
+  narrationSamples: text("narration_samples").array().default(sql`ARRAY[]::text[]`), // Text narrations
+  masteryNotes: text("mastery_notes"), // Notes about mastery/progress this week
+  linkedJournalIds: text("linked_journal_ids").array().default(sql`ARRAY[]::text[]`), // References to journal entries
+  highlightPhotoUrls: text("highlight_photo_urls").array().default(sql`ARRAY[]::text[]`), // Best photos from this week
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("portfolio_week_unique").on(table.childId, table.weekStartDate),
+]);
 
 // Relations
 export const usersRelations = relations(users, ({ one }) => ({
@@ -418,6 +474,24 @@ export const insertFamilyApproachSchema = createInsertSchema(familyApproaches).o
   updatedAt: true,
 });
 
+export const insertStateRequirementSchema = createInsertSchema(stateRequirements).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertChildPortfolioYearSchema = createInsertSchema(childPortfolioYears).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPortfolioEntrySchema = createInsertSchema(portfolioEntries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Future feature - commented out until per-child overrides are implemented
 // export const insertChildApproachSchema = createInsertSchema(childApproaches).omit({
 //   id: true,
@@ -464,6 +538,15 @@ export type SupportTicket = typeof supportTickets.$inferSelect;
 
 export type InsertFamilyApproach = z.infer<typeof insertFamilyApproachSchema>;
 export type FamilyApproach = typeof familyApproaches.$inferSelect;
+
+export type InsertStateRequirement = z.infer<typeof insertStateRequirementSchema>;
+export type StateRequirement = typeof stateRequirements.$inferSelect;
+
+export type InsertChildPortfolioYear = z.infer<typeof insertChildPortfolioYearSchema>;
+export type ChildPortfolioYear = typeof childPortfolioYears.$inferSelect;
+
+export type InsertPortfolioEntry = z.infer<typeof insertPortfolioEntrySchema>;
+export type PortfolioEntry = typeof portfolioEntries.$inferSelect;
 
 // Future feature types - commented out until per-child overrides are implemented
 // export type InsertChildApproach = z.infer<typeof insertChildApproachSchema>;
