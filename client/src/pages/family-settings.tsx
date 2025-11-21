@@ -17,8 +17,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { MapPin, User, Calendar, Plus, Trash2, Save, Sparkles, Facebook, Download, Shield } from "lucide-react";
+import { MapPin, User, Calendar, Plus, Trash2, Save, Sparkles, Facebook, Download, Shield, Brain } from "lucide-react";
 import { PlacesAutocomplete } from "@/components/PlacesAutocomplete";
 import { useLocation } from "wouter";
 
@@ -37,6 +38,19 @@ const familySettingsSchema = z.object({
       birthdate: z.string().min(1, "Birthdate is required"),
       interests: z.string().min(1, "Please add at least one interest"),
       learningStyle: z.string().optional(),
+      // Learning Needs & Neurodivergent Profiles
+      hasAdhd: z.boolean().optional(),
+      adhdIntensity: z.number().min(0).max(10).optional(),
+      hasAutism: z.boolean().optional(),
+      autismIntensity: z.number().min(0).max(10).optional(),
+      sensoryProfile: z.enum(["seeking", "avoiding", "mixed"]).optional(),
+      isGifted: z.boolean().optional(),
+      is2e: z.boolean().optional(),
+      hasDyslexia: z.boolean().optional(),
+      dyslexiaIntensity: z.number().min(0).max(10).optional(),
+      hasAnxiety: z.boolean().optional(),
+      anxietyIntensity: z.number().min(0).max(10).optional(),
+      isPerfectionist: z.boolean().optional(),
     })
   ).min(1, "Please add at least one child"),
 });
@@ -87,6 +101,18 @@ export default function FamilySettings() {
           birthdate: "",
           interests: "",
           learningStyle: "",
+          hasAdhd: false,
+          adhdIntensity: 0,
+          hasAutism: false,
+          autismIntensity: 0,
+          sensoryProfile: undefined,
+          isGifted: false,
+          is2e: false,
+          hasDyslexia: false,
+          dyslexiaIntensity: 0,
+          hasAnxiety: false,
+          anxietyIntensity: 0,
+          isPerfectionist: false,
         },
       ],
     },
@@ -113,6 +139,18 @@ export default function FamilySettings() {
           birthdate: child.birthdate,
           interests: Array.isArray(child.interests) ? child.interests.join(", ") : "",
           learningStyle: child.learningStyle || "",
+          hasAdhd: child.hasAdhd ?? false,
+          adhdIntensity: child.adhdIntensity ?? 0,
+          hasAutism: child.hasAutism ?? false,
+          autismIntensity: child.autismIntensity ?? 0,
+          sensoryProfile: child.sensoryProfile,
+          isGifted: child.isGifted ?? false,
+          is2e: child.is2e ?? false,
+          hasDyslexia: child.hasDyslexia ?? false,
+          dyslexiaIntensity: child.dyslexiaIntensity ?? 0,
+          hasAnxiety: child.hasAnxiety ?? false,
+          anxietyIntensity: child.anxietyIntensity ?? 0,
+          isPerfectionist: child.isPerfectionist ?? false,
         })),
       });
     }
@@ -472,7 +510,24 @@ export default function FamilySettings() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => append({ name: "", birthdate: "", interests: "", learningStyle: "" })}
+                  onClick={() => append({ 
+                    name: "", 
+                    birthdate: "", 
+                    interests: "", 
+                    learningStyle: "",
+                    hasAdhd: false,
+                    adhdIntensity: 0,
+                    hasAutism: false,
+                    autismIntensity: 0,
+                    sensoryProfile: undefined,
+                    isGifted: false,
+                    is2e: false,
+                    hasDyslexia: false,
+                    dyslexiaIntensity: 0,
+                    hasAnxiety: false,
+                    anxietyIntensity: 0,
+                    isPerfectionist: false,
+                  })}
                   data-testid="button-add-child"
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -563,6 +618,262 @@ export default function FamilySettings() {
                       </FormItem>
                     )}
                   />
+
+                  {/* Learning Needs & Preferences */}
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="learning-needs" className="border rounded-lg px-4">
+                      <AccordionTrigger className="hover:no-underline" data-testid={`accordion-learning-needs-${index}`}>
+                        <div className="flex items-center gap-2">
+                          <Brain className="w-4 h-4 text-primary" />
+                          <span className="font-medium">Learning Needs & Preferences (Optional)</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-4 pt-4">
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Help us adapt every activity to your child's unique strengths and needs. 
+                          When selected, the AI automatically tailors lessons with accommodations like shorter lessons, 
+                          movement breaks, visual schedules, and sensory supports.
+                        </p>
+
+                        {/* ADHD / Attention Differences */}
+                        <div className="space-y-3 p-3 border rounded-lg">
+                          <FormField
+                            control={form.control}
+                            name={`children.${index}.hasAdhd`}
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">ADHD / Attention Differences</FormLabel>
+                                  <FormDescription>Adapts with shorter lessons, fidget ideas, movement breaks</FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch checked={field.value} onCheckedChange={field.onChange} data-testid={`switch-adhd-${index}`} />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          {form.watch(`children.${index}.hasAdhd`) && (
+                            <FormField
+                              control={form.control}
+                              name={`children.${index}.adhdIntensity`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Intensity (0-10)</FormLabel>
+                                  <FormControl>
+                                    <Slider
+                                      min={0}
+                                      max={10}
+                                      step={1}
+                                      value={[field.value || 0]}
+                                      onValueChange={(vals) => field.onChange(vals[0])}
+                                      data-testid={`slider-adhd-intensity-${index}`}
+                                    />
+                                  </FormControl>
+                                  <FormDescription>Current: {field.value || 0}/10</FormDescription>
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                        </div>
+
+                        {/* Autism / Sensory Profile */}
+                        <div className="space-y-3 p-3 border rounded-lg">
+                          <FormField
+                            control={form.control}
+                            name={`children.${index}.hasAutism`}
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">Autism / Sensory Profile</FormLabel>
+                                  <FormDescription>Adapts with visual schedules, sensory supports, predictability</FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch checked={field.value} onCheckedChange={field.onChange} data-testid={`switch-autism-${index}`} />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          {form.watch(`children.${index}.hasAutism`) && (
+                            <>
+                              <FormField
+                                control={form.control}
+                                name={`children.${index}.autismIntensity`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Intensity (0-10)</FormLabel>
+                                    <FormControl>
+                                      <Slider
+                                        min={0}
+                                        max={10}
+                                        step={1}
+                                        value={[field.value || 0]}
+                                        onValueChange={(vals) => field.onChange(vals[0])}
+                                        data-testid={`slider-autism-intensity-${index}`}
+                                      />
+                                    </FormControl>
+                                    <FormDescription>Current: {field.value || 0}/10</FormDescription>
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`children.${index}.sensoryProfile`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Sensory Profile</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                      <FormControl>
+                                        <SelectTrigger data-testid={`select-sensory-${index}`}>
+                                          <SelectValue placeholder="Select sensory profile" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="seeking">Sensory Seeking</SelectItem>
+                                        <SelectItem value="avoiding">Sensory Avoiding</SelectItem>
+                                        <SelectItem value="mixed">Mixed Profile</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <FormDescription>How your child responds to sensory input</FormDescription>
+                                  </FormItem>
+                                )}
+                              />
+                            </>
+                          )}
+                        </div>
+
+                        {/* Gifted / 2e */}
+                        <div className="space-y-3 p-3 border rounded-lg">
+                          <FormField
+                            control={form.control}
+                            name={`children.${index}.isGifted`}
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">Gifted</FormLabel>
+                                  <FormDescription>Interest-based intensity, advanced concepts, depth over breadth</FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch checked={field.value} onCheckedChange={field.onChange} data-testid={`switch-gifted-${index}`} />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`children.${index}.is2e`}
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">Twice Exceptional (2e)</FormLabel>
+                                  <FormDescription>Gifted + learning difference - balances challenge with support</FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch checked={field.value} onCheckedChange={field.onChange} data-testid={`switch-2e-${index}`} />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        {/* Dyslexia / Reading Differences */}
+                        <div className="space-y-3 p-3 border rounded-lg">
+                          <FormField
+                            control={form.control}
+                            name={`children.${index}.hasDyslexia`}
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">Dyslexia / Reading Differences</FormLabel>
+                                  <FormDescription>Oral options, audiobooks, reduced written work</FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch checked={field.value} onCheckedChange={field.onChange} data-testid={`switch-dyslexia-${index}`} />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          {form.watch(`children.${index}.hasDyslexia`) && (
+                            <FormField
+                              control={form.control}
+                              name={`children.${index}.dyslexiaIntensity`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Intensity (0-10)</FormLabel>
+                                  <FormControl>
+                                    <Slider
+                                      min={0}
+                                      max={10}
+                                      step={1}
+                                      value={[field.value || 0]}
+                                      onValueChange={(vals) => field.onChange(vals[0])}
+                                      data-testid={`slider-dyslexia-intensity-${index}`}
+                                    />
+                                  </FormControl>
+                                  <FormDescription>Current: {field.value || 0}/10</FormDescription>
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                        </div>
+
+                        {/* Anxiety / Perfectionism */}
+                        <div className="space-y-3 p-3 border rounded-lg">
+                          <FormField
+                            control={form.control}
+                            name={`children.${index}.hasAnxiety`}
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">Anxiety</FormLabel>
+                                  <FormDescription>Choice boards, reduced pressure, gentle encouragement</FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch checked={field.value} onCheckedChange={field.onChange} data-testid={`switch-anxiety-${index}`} />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          {form.watch(`children.${index}.hasAnxiety`) && (
+                            <FormField
+                              control={form.control}
+                              name={`children.${index}.anxietyIntensity`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Intensity (0-10)</FormLabel>
+                                  <FormControl>
+                                    <Slider
+                                      min={0}
+                                      max={10}
+                                      step={1}
+                                      value={[field.value || 0]}
+                                      onValueChange={(vals) => field.onChange(vals[0])}
+                                      data-testid={`slider-anxiety-intensity-${index}`}
+                                    />
+                                  </FormControl>
+                                  <FormDescription>Current: {field.value || 0}/10</FormDescription>
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                          <FormField
+                            control={form.control}
+                            name={`children.${index}.isPerfectionist`}
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">Perfectionism</FormLabel>
+                                  <FormDescription>Growth mindset language, "good enough" practice</FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch checked={field.value} onCheckedChange={field.onChange} data-testid={`switch-perfectionist-${index}`} />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </div>
               ))}
             </CardContent>
