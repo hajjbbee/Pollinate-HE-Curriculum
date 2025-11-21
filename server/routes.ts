@@ -753,6 +753,53 @@ router.get("/api/family", isAuthenticated, async (req: Request, res: Response) =
   }
 });
 
+// Get family learning approach
+router.get("/api/family/approach", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const approach = await storage.getFamilyApproach(family.id);
+    res.json(approach || { approach: "perfect-blend" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update family learning approach
+router.put("/api/family/approach", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const { approach } = req.body;
+    if (!approach) {
+      return res.status(400).json({ error: "Approach is required" });
+    }
+
+    await storage.saveFamilyApproach({
+      familyId: family.id,
+      approach,
+    });
+
+    res.json({ success: true, approach });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Update family settings
 router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Response) => {
   try {

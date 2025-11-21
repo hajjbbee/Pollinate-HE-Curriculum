@@ -11,8 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Settings as SettingsIcon, LogOut, MapPin, Users, Calendar, Plus, Trash2, ChevronDown } from "lucide-react";
+import { Settings as SettingsIcon, LogOut, MapPin, Users, Calendar, Plus, Trash2, ChevronDown, Sparkles } from "lucide-react";
 import { SiFacebook } from "react-icons/si";
+import { LearningApproachSelector, type LearningApproach } from "@/components/LearningApproachSelector";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -48,6 +49,12 @@ export default function Settings() {
     queryKey: ["/api/groups"],
     retry: false,
     enabled: !!user,
+  });
+
+  const { data: familyApproach, isLoading: approachLoading } = useQuery({
+    queryKey: ["/api/family/approach"],
+    retry: false,
+    enabled: !!familyData,
   });
 
   const addGroupMutation = useMutation({
@@ -119,6 +126,26 @@ export default function Settings() {
       toast({
         title: "Error",
         description: error.message || "Failed to add event",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateApproachMutation = useMutation({
+    mutationFn: async (approach: string) => {
+      return await apiRequest("PUT", "/api/family/approach", { approach });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/family/approach"] });
+      toast({
+        title: "Learning Approach Updated",
+        description: "Your curriculum will reflect this approach when regenerated.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update learning approach",
         variant: "destructive",
       });
     },
@@ -250,6 +277,31 @@ export default function Settings() {
                   <p className="text-sm text-primary">Flex for high interest enabled</p>
                 )}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {familyData && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                <CardTitle className="font-heading">Learning Approach</CardTitle>
+              </div>
+              <CardDescription>
+                Choose the educational philosophy that guides your family's curriculum
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {approachLoading ? (
+                <Skeleton className="h-64 w-full" />
+              ) : (
+                <LearningApproachSelector
+                  value={(familyApproach?.approach || "perfect-blend") as LearningApproach}
+                  onChange={(approach) => updateApproachMutation.mutate(approach)}
+                  hideTitle={true}
+                />
+              )}
             </CardContent>
           </Card>
         )}
