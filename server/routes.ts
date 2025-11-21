@@ -880,6 +880,18 @@ router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Re
           birthdate: z.string(),
           interests: z.array(z.string()),
           learningStyle: z.string().nullable(),
+          hasAdhd: z.boolean().optional(),
+          adhdIntensity: z.number().min(0).max(10).optional(),
+          hasAutism: z.boolean().optional(),
+          autismIntensity: z.number().min(0).max(10).optional(),
+          sensoryProfile: z.enum(["seeking", "avoiding", "mixed"]).nullable().optional(),
+          isGifted: z.boolean().optional(),
+          is2e: z.boolean().optional(),
+          hasDyslexia: z.boolean().optional(),
+          dyslexiaIntensity: z.number().min(0).max(10).optional(),
+          hasAnxiety: z.boolean().optional(),
+          anxietyIntensity: z.number().min(0).max(10).optional(),
+          isPerfectionist: z.boolean().optional(),
         })
       ).min(1),
     });
