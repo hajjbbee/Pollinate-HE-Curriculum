@@ -1,11 +1,12 @@
 # Pollinate - Home Education Curriculum
 
 ## Overview
-Pollinate is a home education curriculum SaaS platform designed for multi-child families. It generates personalized, AI-powered 12-week rolling curricula by blending Charlotte Mason, Montessori, unschooling, and project-based learning methodologies. The platform tailors educational plans to each child's interests and learning style, integrating local educational opportunities. It serves families in the United States, Australia, and New Zealand, adapting to regional differences and measurement systems. The project aims to provide an accessible and adaptable home education solution with a focus on personalized learning and community integration.
+Pollinate is a home education curriculum SaaS platform designed for multi-child families worldwide. It generates personalized, AI-powered 12-week rolling curricula by blending Charlotte Mason, Montessori, unschooling, and project-based learning methodologies. The platform tailors educational plans to each child's interests and learning style, integrating local educational opportunities. It serves families globally, adapting to regional differences including locale preferences (language variants), measurement systems (metric/imperial), timezones, and cultural contexts. The project aims to provide an accessible and adaptable home education solution with a focus on personalized learning and community integration.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
-Language: Australian English (use "mum" not "mom", "colour" not "color", etc.)
+Default Language: Australian English (use "mum" not "mom", "colour" not "color", etc.) - but platform is locale-aware
+Global Support: Application adapts to user's country, locale, and measurement system preferences
 
 ## System Architecture
 

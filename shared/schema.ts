@@ -43,7 +43,10 @@ export const families = pgTable("families", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   familyName: varchar("family_name").notNull(),
-  country: varchar("country", { length: 2 }).notNull(), // US, AU, NZ
+  country: varchar("country", { length: 2 }).notNull(), // ISO 3166-1 alpha-2 (e.g., US, AU, GB, NZ, CA, IN, ZA)
+  locale: varchar("locale", { length: 10 }).notNull().default('en-AU'), // Language/region code (en-AU, en-US, en-GB, etc.)
+  measurementSystem: varchar("measurement_system", { length: 10 }).notNull().default('metric'), // "metric" or "imperial"
+  timezone: varchar("timezone", { length: 50 }), // IANA timezone (e.g., "Australia/Sydney", "America/New_York")
   address: text("address").notNull(),
   city: varchar("city"),
   state: varchar("state"),
