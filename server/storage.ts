@@ -21,6 +21,10 @@ import type {
   EmergingInterestSignal,
   InsertSupportTicket,
   SupportTicket,
+  InsertFamilyApproach,
+  FamilyApproach,
+  InsertChildApproach,
+  ChildApproach,
   User,
   UpsertUser,
 } from "@shared/schema";
@@ -108,6 +112,13 @@ export interface IStorage {
   createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket>;
   getSupportTickets(familyId: string): Promise<SupportTicket[]>;
   updateSupportTicket(ticketId: string, updates: Partial<InsertSupportTicket>): Promise<SupportTicket>;
+
+  // Learning Approaches
+  upsertFamilyApproach(approach: InsertFamilyApproach): Promise<FamilyApproach>;
+  getFamilyApproach(familyId: string): Promise<FamilyApproach | null>;
+  upsertChildApproach(approach: InsertChildApproach): Promise<ChildApproach>;
+  getChildApproach(childId: string): Promise<ChildApproach | null>;
+  getChildApproaches(childIds: string[]): Promise<ChildApproach[]>;
 }
 
 import { db } from "./db";
@@ -125,8 +136,10 @@ import {
   activityFeedback,
   emergingInterestSignals,
   supportTickets,
+  familyApproaches,
+  childApproaches,
 } from "@shared/schema";
-import { eq, and, desc, gte, lte, sql as sqlOp } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql as sqlOp, inArray } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   // User (for authentication)
@@ -742,6 +755,73 @@ export class DatabaseStorage implements IStorage {
       .where(eq(supportTickets.id, ticketId))
       .returning();
     return result;
+  }
+
+  // Learning Approaches
+  async upsertFamilyApproach(approach: InsertFamilyApproach): Promise<FamilyApproach> {
+    const existing = await db
+      .select()
+      .from(familyApproaches)
+      .where(eq(familyApproaches.familyId, approach.familyId))
+      .limit(1);
+
+    if (existing.length > 0) {
+      const [result] = await db
+        .update(familyApproaches)
+        .set({ ...approach, updatedAt: new Date() })
+        .where(eq(familyApproaches.familyId, approach.familyId))
+        .returning();
+      return result;
+    } else {
+      const [result] = await db.insert(familyApproaches).values(approach).returning();
+      return result;
+    }
+  }
+
+  async getFamilyApproach(familyId: string): Promise<FamilyApproach | null> {
+    const [result] = await db
+      .select()
+      .from(familyApproaches)
+      .where(eq(familyApproaches.familyId, familyId))
+      .limit(1);
+    return result || null;
+  }
+
+  async upsertChildApproach(approach: InsertChildApproach): Promise<ChildApproach> {
+    const existing = await db
+      .select()
+      .from(childApproaches)
+      .where(eq(childApproaches.childId, approach.childId))
+      .limit(1);
+
+    if (existing.length > 0) {
+      const [result] = await db
+        .update(childApproaches)
+        .set({ ...approach, updatedAt: new Date() })
+        .where(eq(childApproaches.childId, approach.childId))
+        .returning();
+      return result;
+    } else {
+      const [result] = await db.insert(childApproaches).values(approach).returning();
+      return result;
+    }
+  }
+
+  async getChildApproach(childId: string): Promise<ChildApproach | null> {
+    const [result] = await db
+      .select()
+      .from(childApproaches)
+      .where(eq(childApproaches.childId, childId))
+      .limit(1);
+    return result || null;
+  }
+
+  async getChildApproaches(childIds: string[]): Promise<ChildApproach[]> {
+    if (childIds.length === 0) return [];
+    return await db
+      .select()
+      .from(childApproaches)
+      .where(inArray(childApproaches.childId, childIds));
   }
 }
 

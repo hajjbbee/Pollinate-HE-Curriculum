@@ -409,6 +409,18 @@ export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit
   updatedAt: true,
 });
 
+export const insertFamilyApproachSchema = createInsertSchema(familyApproaches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertChildApproachSchema = createInsertSchema(childApproaches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -445,6 +457,12 @@ export type HomeschoolGroup = typeof homeschoolGroups.$inferSelect;
 
 export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
 export type SupportTicket = typeof supportTickets.$inferSelect;
+
+export type InsertFamilyApproach = z.infer<typeof insertFamilyApproachSchema>;
+export type FamilyApproach = typeof familyApproaches.$inferSelect;
+
+export type InsertChildApproach = z.infer<typeof insertChildApproachSchema>;
+export type ChildApproach = typeof childApproaches.$inferSelect;
 
 // Zod schemas for AI curriculum response validation
 export const confidenceExampleSchema = z.object({

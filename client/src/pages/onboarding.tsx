@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { PlacesAutocomplete } from "@/components/PlacesAutocomplete";
+import { LearningApproachSelector, type LearningApproach } from "@/components/LearningApproachSelector";
 
 const step1Schema = z.object({
   familyName: z.string().min(1, "Family name is required"),
@@ -34,6 +35,10 @@ const step2Schema = z.object({
   flexForHighInterest: z.boolean(),
 });
 
+const step3Schema = z.object({
+  learningApproach: z.string().min(1, "Please select a learning approach"),
+});
+
 const childSchema = z.object({
   name: z.string().min(1, "Name is required"),
   birthdate: z.string().min(1, "Birthdate is required"),
@@ -41,13 +46,14 @@ const childSchema = z.object({
   learningStyle: z.string().optional(),
 });
 
-const step3Schema = z.object({
+const step4Schema = z.object({
   children: z.array(childSchema).min(1, "Please add at least one child"),
 });
 
 type Step1Data = z.infer<typeof step1Schema>;
 type Step2Data = z.infer<typeof step2Schema>;
 type Step3Data = z.infer<typeof step3Schema>;
+type Step4Data = z.infer<typeof step4Schema>;
 
 const TRAVEL_RADIUS_OPTIONS = [15, 30, 45, 60, 90, 120];
 const LEARNING_STYLES = [
@@ -65,6 +71,7 @@ export default function Onboarding() {
 
   const [step1Data, setStep1Data] = useState<Step1Data | null>(null);
   const [step2Data, setStep2Data] = useState<Step2Data | null>(null);
+  const [step3Data, setStep3Data] = useState<Step3Data | null>(null);
 
   const step1Form = useForm<Step1Data>({
     resolver: zodResolver(step1Schema),
