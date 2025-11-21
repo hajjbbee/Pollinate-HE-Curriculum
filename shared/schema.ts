@@ -119,6 +119,10 @@ export const journalEntries = pgTable("journal_entries", {
   entryDate: date("entry_date").notNull(),
   content: text("content").notNull(),
   photoUrls: text("photo_urls").array().default(sql`ARRAY[]::text[]`),
+  audioUrl: text("audio_url"), // Voice recording URL from object storage
+  audioDuration: integer("audio_duration"), // Duration in seconds
+  aiFollowUpQuestions: text("ai_follow_up_questions").array(), // AI-generated reflection questions
+  followUpAnswers: text("follow_up_answers").array(), // Mum's answers to follow-up questions
   aiAnalysis: jsonb("ai_analysis"), // Structured AI analysis: { summary, interests[], skills[], enthusiasm, notes }
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

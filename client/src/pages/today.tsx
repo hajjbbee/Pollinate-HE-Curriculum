@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, Users, User, MapPin, Mic, Check, X, Flame } from "lucide-react";
+import { Sparkles, Users, User, MapPin, Mic, Check, X, Flame, CheckCircle2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { WeekCurriculum, DailyActivity } from "@shared/schema";
 import { format, startOfWeek } from "date-fns";
@@ -19,7 +20,9 @@ export default function Today() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [completedActivities, setCompletedActivities] = useState<Set<string>>(new Set());
-  const { isRecording, transcript, duration, error: recordingError, startRecording, stopRecording, resetRecording } = useVoiceRecording();
+  const { isRecording, audioBlob, audioUrl, duration, error: recordingError, startRecording, stopRecording, resetRecording } = useVoiceRecording();
+  const [summary, setSummary] = useState("");
+  const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
 
   const { data: familyData } = useQuery({
     queryKey: ["/api/family"],
@@ -116,18 +119,30 @@ export default function Today() {
   };
 
   const saveJournalMutation = useMutation({
-    mutationFn: async (data: { transcript: string }) => {
+    mutationFn: async (data: { summary: string }) => {
       return await apiRequest('/api/journal-voice', {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify({ 
+          transcript: data.summary,
+          duration: duration,
+        }),
       });
     },
-    onSuccess: () => {
-      toast({
-        title: "Voice note saved!",
-        description: "Your journal entry has been saved successfully.",
-      });
-      resetRecording();
+    onSuccess: (data: any) => {
+      if (data.followUpQuestions && data.followUpQuestions.length > 0) {
+        setFollowUpQuestions(data.followUpQuestions);
+        toast({
+          title: "Voice note saved!",
+          description: "We've generated some follow-up questions to help you reflect.",
+        });
+      } else {
+        toast({
+          title: "Voice note saved!",
+          description: "Your journal entry has been saved successfully.",
+        });
+        resetRecording();
+        setSummary("");
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/journal'] });
     },
     onError: () => {
@@ -148,13 +163,21 @@ export default function Today() {
   };
 
   const handleSaveVoiceNote = () => {
-    if (transcript.trim()) {
-      saveJournalMutation.mutate({ transcript });
+    if (summary.trim()) {
+      saveJournalMutation.mutate({ summary: summary.trim() });
+    } else {
+      toast({
+        title: "Summary required",
+        description: "Please add a brief summary of today's learning.",
+        variant: "destructive",
+      });
     }
   };
 
   const handleDiscardVoiceNote = () => {
     resetRecording();
+    setSummary("");
+    setFollowUpQuestions([]);
   };
 
   useEffect(() => {
@@ -386,7 +409,7 @@ export default function Today() {
           <CardHeader>
             <CardTitle className="text-lg font-heading">Quick Journal</CardTitle>
             <CardDescription>
-              Record a voice note about today's learning (up to 30 seconds)
+              Record a voice note about today's learning (up to 2 minutes)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -400,15 +423,27 @@ export default function Today() {
             >
               <Mic className={`w-6 h-6 mr-2 ${isRecording ? "animate-pulse" : ""}`} />
               {isRecording 
-                ? `Recording... ${duration}s / 30s` 
+                ? `Recording... ${duration}s / 120s` 
                 : "Tap to start recording"}
             </Button>
 
-            {transcript && !isRecording && (
+            {audioUrl && !isRecording && followUpQuestions.length === 0 && (
               <div className="space-y-3">
                 <div className="p-3 bg-muted rounded-lg border border-border">
-                  <p className="text-sm text-muted-foreground mb-1">Transcript:</p>
-                  <p className="text-sm">{transcript}</p>
+                  <p className="text-sm text-muted-foreground mb-2">Your recording ({duration}s):</p>
+                  <audio 
+                    controls 
+                    src={audioUrl} 
+                    className="w-full mb-3"
+                    data-testid="audio-player"
+                  />
+                  <Textarea
+                    placeholder="Add a brief summary of today's learning..."
+                    value={summary}
+                    onChange={(e) => setSummary(e.target.value)}
+                    className="min-h-[80px]"
+                    data-testid="input-summary"
+                  />
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -419,7 +454,7 @@ export default function Today() {
                     data-testid="button-save-voice-note"
                   >
                     <Check className="w-4 h-4 mr-2" />
-                    Save Journal Entry
+                    {saveJournalMutation.isPending ? "Saving..." : "Save & Get AI Questions"}
                   </Button>
                   <Button
                     variant="outline"
@@ -429,6 +464,62 @@ export default function Today() {
                   >
                     <X className="w-4 h-4" />
                   </Button>
+                </div>
+              </div>
+            )}
+
+            {followUpQuestions.length > 0 && (
+              <div className="space-y-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                <div className="flex items-start gap-2">
+                  <Sparkles className="w-5 h-5 text-primary mt-1" />
+                  <div className="flex-1">
+                    <h4 className="font-medium text-sm mb-2">AI Follow-up Questions</h4>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      These questions can help you reflect more deeply on today's learning:
+                    </p>
+                    <div className="space-y-3">
+                      {followUpQuestions.map((question, idx) => (
+                        <div key={idx} className="space-y-2">
+                          <p className="text-sm font-medium">{question}</p>
+                          <Textarea
+                            placeholder="Your thoughts..."
+                            className="min-h-[60px] text-sm"
+                            data-testid={`input-follow-up-${idx}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => {
+                          toast({
+                            title: "Answers saved!",
+                            description: "Thank you for the additional context.",
+                          });
+                          setFollowUpQuestions([]);
+                          resetRecording();
+                          setSummary("");
+                        }}
+                        data-testid="button-save-answers"
+                      >
+                        Save Answers
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setFollowUpQuestions([]);
+                          resetRecording();
+                          setSummary("");
+                        }}
+                        data-testid="button-skip-questions"
+                      >
+                        Skip for now
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

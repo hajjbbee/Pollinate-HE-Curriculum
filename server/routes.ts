@@ -807,11 +807,6 @@ router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Re
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const family = await storage.getFamily(req.user.id);
-    if (!family) {
-      return res.status(404).json({ error: "Family not found" });
-    }
-
     // Validate request body
     const settingsSchema = z.object({
       familyName: z.string().min(1),
@@ -842,16 +837,32 @@ router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Re
       coordinates = await geocodeAddress(address, country);
     }
 
-    // Update family data
-    await storage.updateFamily(req.user.id, {
-      familyName,
-      country,
-      address,
-      latitude: coordinates.lat,
-      longitude: coordinates.lng,
-      travelRadiusMinutes,
-      flexForHighInterest,
-    });
+    // Get or create family record (upsert pattern for onboarding)
+    let family = await storage.getFamily(req.user.id);
+    if (!family) {
+      console.log("Creating new family record for user:", req.user.id);
+      family = await storage.createFamily({
+        userId: req.user.id,
+        familyName,
+        country,
+        address,
+        latitude: coordinates.lat,
+        longitude: coordinates.lng,
+        travelRadiusMinutes,
+        flexForHighInterest,
+      });
+    } else {
+      // Update existing family data
+      await storage.updateFamily(req.user.id, {
+        familyName,
+        country,
+        address,
+        latitude: coordinates.lat,
+        longitude: coordinates.lng,
+        travelRadiusMinutes,
+        flexForHighInterest,
+      });
+    }
 
     // Update children - diff against existing to preserve IDs
     const existingChildren = await storage.getChildren(family.id);
@@ -1047,9 +1058,9 @@ router.post("/api/journal-voice", isAuthenticated, async (req: Request, res: Res
       return res.status(404).json({ error: "Family not found" });
     }
 
-    const { transcript, childId } = req.body;
+    const { transcript, childId, duration, audioUrl } = req.body;
     if (!transcript || typeof transcript !== 'string') {
-      return res.status(400).json({ error: "Transcript is required" });
+      return res.status(400).json({ error: "Transcript or summary is required" });
     }
 
     // Get children for context
@@ -1123,29 +1134,61 @@ Respond in JSON format:
 
     const analysis = JSON.parse(completion.choices[0].message.content || '{}');
 
-    // Create journal entry with structured AI analysis in content
-    const enhancedContent = `${transcript}
+    // Generate AI follow-up questions to deepen reflection
+    const followUpPrompt = `Based on this learning journal entry, generate 2-3 thoughtful follow-up questions that would help the mum reflect more deeply and provide additional context. The questions should be warm, encouraging, and help uncover more details about the child's learning experience.
 
----
-AI Analysis
-Summary: ${analysis.summary || 'No summary available'}
-Interests: ${analysis.interests?.join(', ') || 'None detected'}
-Skills: ${analysis.skills?.join(', ') || 'None detected'}
-Engagement: ${analysis.enthusiasm || 'Not detected'}
-Notes: ${analysis.notes || 'None'}`;
+Journal summary: ${analysis.summary}
+Interests detected: ${analysis.interests?.join(', ') || 'None'}
+Skills shown: ${analysis.skills?.join(', ') || 'None'}
+
+Generate questions that are:
+- Warm and conversational (addressing "you" as the mum)
+- Specific to the content mentioned
+- Designed to reveal more about the child's engagement, understanding, or next steps
+- Helpful for future curriculum planning
+
+Respond with ONLY a JSON array of 2-3 question strings, like: ["Question 1?", "Question 2?", "Question 3?"]`;
+
+    const questionsCompletion = await openai.chat.completions.create({
+      model: "anthropic/claude-3.5-sonnet",
+      messages: [{ role: "user", content: followUpPrompt }],
+      temperature: 0.7,
+      max_tokens: 200,
+      response_format: { type: "json_object" },
+    });
+
+    let followUpQuestions: string[] = [];
+    try {
+      const questionsResponse = JSON.parse(questionsCompletion.choices[0].message.content || '{"questions":[]}');
+      followUpQuestions = questionsResponse.questions || questionsResponse;
+      // Ensure it's an array
+      if (!Array.isArray(followUpQuestions)) {
+        followUpQuestions = Object.values(questionsResponse).filter((v): v is string => typeof v === 'string');
+      }
+    } catch (e) {
+      console.error('Failed to parse follow-up questions:', e);
+      followUpQuestions = [
+        "What seemed to spark the most excitement or curiosity?",
+        "Were there any moments of struggle or breakthrough?",
+      ];
+    }
 
     const entry = await storage.createJournalEntry({
       childId: targetChildId,
       familyId: family.id,
       entryDate: new Date().toISOString().split('T')[0],
-      content: transcript, // Store original transcript
+      content: transcript,
       photoUrls: [],
-      aiAnalysis: analysis, // Store structured analysis separately
+      audioUrl: audioUrl || null,
+      audioDuration: duration || null,
+      aiFollowUpQuestions: followUpQuestions,
+      aiAnalysis: analysis,
     });
 
     res.json({ 
       entry, 
       analysis,
+      followUpQuestions,
       childName: targetChild?.name 
     });
   } catch (error: any) {
