@@ -425,6 +425,7 @@ export interface ConfidenceExample {
   title: string;
   description: string;
   ageRange?: string;
+  pedagogy?: string; // e.g., "🎲 Gameschooling", "🍃 Nature/Waldorf", "⭐ Steiner", "🎨 Art/STEAM", "🔍 Inquiry"
 }
 
 export interface ActivityWithExamples {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, Lightbulb, Sprout, Sun, TreeDeciduous } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export interface ConfidenceExample {
   title: string;
@@ -44,30 +44,13 @@ export function ExpandableActivityCard({
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
           {onToggleComplete && (
-            <button
-              onClick={onToggleComplete}
-              className={`mt-1 h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${
-                completed
-                  ? "bg-primary border-primary"
-                  : "border-muted-foreground/30 hover-elevate"
-              }`}
-              data-testid="button-toggle-complete"
+            <Checkbox
+              checked={completed}
+              onCheckedChange={onToggleComplete}
+              className="mt-1"
+              data-testid="checkbox-activity-complete"
               aria-label={completed ? "Mark as incomplete" : "Mark as complete"}
-            >
-              {completed && (
-                <svg
-                  className="w-3 h-3 text-primary-foreground"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="3"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              )}
-            </button>
+            />
           )}
 
           <div className="flex-1">
@@ -111,6 +94,7 @@ export function ExpandableActivityCard({
                     title={activityData.examples.quickEasy.title}
                     description={activityData.examples.quickEasy.description}
                     ageRange={activityData.examples.quickEasy.ageRange}
+                    pedagogy={activityData.examples.quickEasy.pedagogy}
                     testId="example-quick-easy"
                   />
 
@@ -122,6 +106,7 @@ export function ExpandableActivityCard({
                       activityData.examples.mediumAdventure.description
                     }
                     ageRange={activityData.examples.mediumAdventure.ageRange}
+                    pedagogy={activityData.examples.mediumAdventure.pedagogy}
                     testId="example-medium-adventure"
                   />
 
@@ -131,6 +116,7 @@ export function ExpandableActivityCard({
                     title={activityData.examples.deepDive.title}
                     description={activityData.examples.deepDive.description}
                     ageRange={activityData.examples.deepDive.ageRange}
+                    pedagogy={activityData.examples.deepDive.pedagogy}
                     testId="example-deep-dive"
                   />
                 </div>
@@ -153,6 +139,7 @@ interface ExampleCardProps {
   title: string;
   description: string;
   ageRange?: string;
+  pedagogy?: string;
   testId: string;
 }
 
@@ -162,6 +149,7 @@ function ExampleCard({
   title,
   description,
   ageRange,
+  pedagogy,
   testId,
 }: ExampleCardProps) {
   return (
@@ -174,6 +162,9 @@ function ExampleCard({
           {icon}
         </div>
         <span className="font-medium text-sm">{title}</span>
+        {pedagogy && (
+          <span className="text-xs text-muted-foreground">{pedagogy}</span>
+        )}
       </div>
       <p className="text-sm text-muted-foreground pl-8">{description}</p>
       {ageRange && (

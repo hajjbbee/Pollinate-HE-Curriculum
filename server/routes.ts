@@ -247,13 +247,34 @@ async function generateCurriculum(
     category: opp.category || "Educational",
   }));
 
-  const systemPrompt = `You are an expert homeschool curriculum designer specializing in a Charlotte Mason + Montessori + unschooling hybrid approach. You create living, interest-led curricula that prioritize:
+  const systemPrompt = `You are the world's most sophisticated hybrid homeschool curriculum engine, seamlessly blending ALL of these approaches in every single suggestion:
 
-1. DEPTH OVER BREADTH - When a child shows high interest, dive deep
-2. MASTERY LEVELS - Track progression: Exposure → Developing → Strong → Mastery → Mentor
-3. NATURE & REAL EXPERIENCES - Prioritize outdoor learning and hands-on activities
-4. FAMILY THEMES - Unite siblings with shared themes while honoring individual paths
-5. LOCAL OPPORTUNITIES - Integrate real-world educational experiences
+• Child-led & Unschooling (follow the child's spark, strewing, rabbit holes)
+• Charlotte Mason (living books, narration, nature study, short lessons, habit training)
+• Montessori (hands-on materials, self-directed, practical life, cosmic education)
+• Waldorf / Steiner (imagination first, head-heart-hands, rhythm & seasons, storytelling, beeswax, watercolour, form drawing, festivals)
+• Gameschooling (board games, card games, RPGs, active play as core learning)
+• Nature-Based & Seasonal Living (outdoor time daily, wonder walks, nature table, seasonal crafts)
+• Inquiry-Based & Project-Based Learning (big questions, long-term projects, real-world application)
+• Art-Based Pedagogy (process art, main lesson books, music, movement, drama)
+• STEAM / STEM (authentic science, technology, engineering, arts, math woven naturally — never forced worksheets)
+
+Rules that must be followed in EVERY output:
+1. Never default to worksheets or screens — default to real books, real materials, real world, real play
+2. Prioritise beauty, wonder, and joy — learning must feel magical
+3. Balance head (thinking), heart (feeling/awe), hands (doing/making) every single day
+4. Weave in seasonal/festival tie-ins when relevant (e.g. beeswax candles for Advent, watercolour leaves in autumn)
+5. Always offer artistic expression (drawing, painting, modelling, music, storytelling, drama)
+6. Include movement, rhythm, and play every day
+7. Use games wherever possible (math → board game, history → timeline card game, science → inquiry scavenger hunt)
+8. Inquiry questions first → facts later (Waldorf style)
+9. DEPTH OVER BREADTH - When a child shows high interest, dive deep
+10. MASTERY LEVELS - Track progression: Exposure → Developing → Strong → Mastery → Mentor
+11. FAMILY THEMES - Unite siblings with shared themes while honoring individual paths
+12. LOCAL OPPORTUNITIES - Integrate real-world educational experiences
+
+When generating the 3 Confidence-Boosting Examples, explicitly draw from the pedagogies above and label them subtly with pedagogy icons:
+🎲 Gameschooling | 🍃 Nature/Waldorf | ⭐ Steiner Imaginative | 🎨 Art/STEAM | 🔍 Inquiry
 
 CRITICAL: Return ONLY valid JSON. No markdown, no code blocks, no explanations.`;
 
@@ -331,17 +352,20 @@ Return JSON in this EXACT structure (no markdown, no code blocks):
                   "quickEasy": {
                     "title": "Quick & Easy (5-15 min, household items)",
                     "description": "Grab a tray of sand or dirt. Build a small hill and slowly pour water on one side — watch erosion create valleys in real time!",
-                    "ageRange": "great for ages 4-8"
+                    "ageRange": "great for ages 4-8",
+                    "pedagogy": "🍃 Nature/Waldorf"
                   },
                   "mediumAdventure": {
                     "title": "Medium Adventure (20-45 min, low-cost or free)",
                     "description": "Head to a local park or hiking trail. Look for different rock layers on a hill cut-away. Take photos and compare to library books about plate tectonics.",
-                    "ageRange": "perfect for ages 8-12"
+                    "ageRange": "perfect for ages 8-12",
+                    "pedagogy": "🔍 Inquiry"
                   },
                   "deepDive": {
                     "title": "Deep-Dive Rabbit Hole (1-3 hours OR multi-day project)",
                     "description": "Make a working volcano model with baking soda, vinegar, and food colouring. Film it erupting from multiple angles, then edit a slow-motion video and label the geological processes (great for teens who love filming or chemistry).",
-                    "ageRange": "brilliant for ages 12+"
+                    "ageRange": "brilliant for ages 12+",
+                    "pedagogy": "🎨 Art/STEAM"
                   }
                 }
               },

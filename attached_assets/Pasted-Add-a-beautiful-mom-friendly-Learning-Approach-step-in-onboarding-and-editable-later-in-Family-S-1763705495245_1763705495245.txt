@@ -1,0 +1,38 @@
+Add a beautiful, mom-friendly "Learning Approach" step in onboarding (and editable later in Family Settings).
+
+For the FAMILY (one setting that applies as default):
+• Slider or pretty cards to choose emphasis (they can pick multiple and rank them):
+  – Child-Led / Unschooling
+  – Charlotte Mason (living books, narration, nature study)
+  – Montessori
+  – Waldorf / Steiner (rhythm, imagination, art-first)
+  – Gameschooling
+  – Nature-Based / Seasonal Living
+  – Inquiry-Based / Project-Based
+  – Art-Based Pedagogy
+  – STEAM / STEM Focus
+  – Classical / Traditional (optional light academics)
+
+PLUS a magical "Perfect Blend – surprise me!" option that dynamically mixes all of them based on the child’s interests that week (this becomes the most popular choice).
+
+For EACH INDIVIDUAL CHILD (override the family default):
+• Same selector but per child
+• Toggle "Use family default" ON/OFF
+• Mom can say “Child A = heavy Waldorf + nature” while “Child B = full gameschooling + STEAM”
+
+How it works under the hood:
+– Store family_approaches and child_approaches[] in Supabase
+– In the master curriculum prompt, inject:
+  "Primary approaches for this family: Waldorf (high), Gameschooling (medium), Child-Led (high). For child Lily: override to 90% Waldorf + Nature. For child Max: 80% Gameschooling + STEAM."
+– The AI now weights every suggestion, every 3 examples, every resource toward their chosen styles
+– If they pick "Perfect Blend", the AI freely chooses the best match for that week’s theme and child’s mood
+
+UI:
+– Use beautiful illustrated cards with icons (paintbrush for Waldorf, dice for Gameschooling, magnifying glass for Inquiry, etc.)
+– Multi-select chips with percentage sliders (or simple Low/Medium/High)
+– Little preview text when they hover: "Waldorf = storytelling, beeswax modelling, seasonal festivals"
+– Final card: "✨ Perfect Blend – let the AI choose what fits best each week"
+
+In editable Family Settings, make it one click to change and instantly regenerate the next 12 weeks.
+
+This turns your app from "really good" into "how does it know my family so perfectly?!" — the #1 reason the top tools have 6000+ paying users right now.
