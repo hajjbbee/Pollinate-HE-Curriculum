@@ -1,6 +1,6 @@
 import { Router, type Request, type Response, type Express } from "express";
 import { storage } from "./storage";
-import { insertFamilySchema, insertChildSchema, insertJournalEntrySchema, type CurriculumData, type WeekCurriculum, curriculumDataSchema } from "@shared/schema";
+import { insertFamilySchema, insertChildSchema, insertJournalEntrySchema, insertTranscriptCourseSchema, insertCreditMappingSchema, type CurriculumData, type WeekCurriculum, curriculumDataSchema } from "@shared/schema";
 import { z } from "zod";
 import OpenAI from "openai";
 import { setupAuth, isAuthenticated } from "./replitAuth";
@@ -1311,6 +1311,134 @@ router.get("/api/children", isAuthenticated, async (req: Request, res: Response)
 
     const children = await storage.getChildren(family.id);
     res.json(children);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// High School Mode - Get transcript courses for a child
+router.get("/api/transcript/courses", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const childId = req.query.childId as string;
+    if (!childId) {
+      return res.status(400).json({ error: "Child ID is required" });
+    }
+
+    // Verify child belongs to user's family
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const child = await storage.getChildById(childId);
+    if (!child || child.familyId !== family.id) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const courses = await storage.getTranscriptCourses(childId);
+    res.json(courses);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// High School Mode - Create transcript course
+router.post("/api/transcript/courses", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Validate request body
+    const validationResult = insertTranscriptCourseSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ error: "Invalid course data", details: validationResult.error.errors });
+    }
+
+    const courseData = validationResult.data;
+
+    // Verify child belongs to user's family
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const child = await storage.getChildById(courseData.childId);
+    if (!child || child.familyId !== family.id) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const course = await storage.createTranscriptCourse(courseData);
+    res.json(course);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// High School Mode - Update transcript course
+router.patch("/api/transcript/courses/:courseId", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Validate request body (partial update)
+    const validationResult = insertTranscriptCourseSchema.partial().safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ error: "Invalid course data", details: validationResult.error.errors });
+    }
+
+    const updateData = validationResult.data;
+    const { courseId } = req.params;
+    const course = await storage.getTranscriptCourse(courseId);
+    
+    if (!course) {
+      return res.status(404).json({ error: "Course not found" });
+    }
+
+    // Verify course belongs to user's family
+    const child = await storage.getChildById(course.childId);
+    const family = await storage.getFamily(req.user.id);
+    
+    if (!child || !family || child.familyId !== family.id) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const updated = await storage.updateTranscriptCourse(courseId, updateData);
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// High School Mode - Delete transcript course
+router.delete("/api/transcript/courses/:courseId", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { courseId } = req.params;
+    const course = await storage.getTranscriptCourse(courseId);
+    
+    if (!course) {
+      return res.status(404).json({ error: "Course not found" });
+    }
+
+    // Verify course belongs to user's family
+    const child = await storage.getChildById(course.childId);
+    const family = await storage.getFamily(req.user.id);
+    
+    if (!child || !family || child.familyId !== family.id) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    await storage.deleteTranscriptCourse(courseId);
+    res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

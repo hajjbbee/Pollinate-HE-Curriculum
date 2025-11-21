@@ -6,8 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useMobile } from "@/hooks/useMobile";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger } from "@/components/ui/sidebar";
-import { Home, BookOpen, MapPin, Settings as SettingsIcon, Sparkles, LogOut, Shield } from "lucide-react";
+import { Home, BookOpen, MapPin, Settings as SettingsIcon, Sparkles, LogOut, Shield, GraduationCap } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useQuery } from "@tanstack/react-query";
 
 import Landing from "@/pages/landing";
 import Onboarding from "@/pages/onboarding";
@@ -21,6 +22,7 @@ import Opportunities from "@/pages/opportunities";
 import FamilySettings from "@/pages/family-settings";
 import Privacy from "@/pages/privacy";
 import Pricing from "@/pages/pricing";
+import TranscriptPage from "@/pages/transcript";
 import NotFound from "@/pages/not-found";
 import { BottomNav } from "@/components/BottomNav";
 import { FloatingHelpButton } from "@/components/FloatingHelpButton";
@@ -29,13 +31,27 @@ function AppSidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
 
-  const menuItems = [
+  const { data: children, isLoading: childrenLoading } = useQuery({
+    queryKey: ["/api/children"],
+    enabled: !!user,
+  });
+
+  const baseMenuItems = [
     { title: "Dashboard", url: "/dashboard", icon: Home },
     { title: "Journal", url: "/journal", icon: BookOpen },
     { title: "Opportunities", url: "/opportunities", icon: MapPin },
     { title: "Settings", url: "/settings", icon: SettingsIcon },
     { title: "Privacy & Safety", url: "/privacy", icon: Shield },
   ];
+
+  // Only show Transcripts menu item after children data loads and if high school children exist
+  const menuItems = !childrenLoading && children?.some((child: any) => child.isHighSchoolMode)
+    ? [
+        ...baseMenuItems.slice(0, 2),
+        { title: "Transcripts", url: "/transcripts", icon: GraduationCap },
+        ...baseMenuItems.slice(2),
+      ]
+    : baseMenuItems;
 
   const getInitials = (name: string) => {
     return name
@@ -125,6 +141,7 @@ function MobileRouter() {
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/journal" component={Journal} />
         <Route path="/opportunities" component={Opportunities} />
+        <Route path="/transcripts" component={TranscriptPage} />
         <Route path="/settings" component={FamilySettings} />
         <Route path="/privacy" component={Privacy} />
         <Route path="/pricing" component={Pricing} />
@@ -146,6 +163,7 @@ function DesktopRouter() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/journal" component={Journal} />
       <Route path="/opportunities" component={Opportunities} />
+      <Route path="/transcripts" component={TranscriptPage} />
       <Route path="/settings" component={FamilySettings} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/pricing" component={Pricing} />

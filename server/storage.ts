@@ -23,6 +23,10 @@ import type {
   SupportTicket,
   InsertFamilyApproach,
   FamilyApproach,
+  InsertTranscriptCourse,
+  TranscriptCourse,
+  InsertCreditMapping,
+  CreditMapping,
   // Child approaches removed - future feature
   // InsertChildApproach,
   // ChildApproach,
@@ -123,6 +127,19 @@ export interface IStorage {
   // getChildApproach(childId: string): Promise<ChildApproach | null>;
   // getChildApproaches(childIds: string[]): Promise<ChildApproach[]>;
 
+  // High School Mode - Transcripts
+  createTranscriptCourse(course: InsertTranscriptCourse): Promise<TranscriptCourse>;
+  getTranscriptCourses(childId: string): Promise<TranscriptCourse[]>;
+  getTranscriptCourse(courseId: string): Promise<TranscriptCourse | null>;
+  updateTranscriptCourse(courseId: string, updates: Partial<InsertTranscriptCourse>): Promise<TranscriptCourse>;
+  deleteTranscriptCourse(courseId: string): Promise<void>;
+
+  // High School Mode - Credit Mappings
+  createCreditMapping(mapping: InsertCreditMapping): Promise<CreditMapping>;
+  getCreditMappings(childId: string): Promise<CreditMapping[]>;
+  updateCreditMapping(mappingId: string, updates: Partial<InsertCreditMapping>): Promise<CreditMapping>;
+  deleteCreditMapping(mappingId: string): Promise<void>;
+
   // Privacy & Data Management
   getAllFamilyData(userId: string): Promise<{
     family: Family | null;
@@ -156,6 +173,8 @@ import {
   supportTickets,
   familyApproaches,
   childApproaches,
+  transcriptCourses,
+  creditMappings,
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql as sqlOp, inArray } from "drizzle-orm";
 
@@ -915,6 +934,67 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAccount(userId: string): Promise<void> {
     await db.delete(users).where(eq(users.id, userId));
+  }
+
+  async createTranscriptCourse(course: InsertTranscriptCourse): Promise<TranscriptCourse> {
+    const [newCourse] = await db.insert(transcriptCourses).values(course).returning();
+    return newCourse;
+  }
+
+  async getTranscriptCourses(childId: string): Promise<TranscriptCourse[]> {
+    // Order by grade level numerically (cast string to int) then by creation date
+    return await db
+      .select()
+      .from(transcriptCourses)
+      .where(eq(transcriptCourses.childId, childId))
+      .orderBy(sqlOp`CAST(${transcriptCourses.gradeLevel} AS INTEGER)`, desc(transcriptCourses.createdAt));
+  }
+
+  async getTranscriptCourse(courseId: string): Promise<TranscriptCourse | null> {
+    const courses = await db
+      .select()
+      .from(transcriptCourses)
+      .where(eq(transcriptCourses.id, courseId));
+    return courses[0] || null;
+  }
+
+  async updateTranscriptCourse(courseId: string, updates: Partial<InsertTranscriptCourse>): Promise<TranscriptCourse> {
+    const [updated] = await db
+      .update(transcriptCourses)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(transcriptCourses.id, courseId))
+      .returning();
+    return updated;
+  }
+
+  async deleteTranscriptCourse(courseId: string): Promise<void> {
+    await db.delete(transcriptCourses).where(eq(transcriptCourses.id, courseId));
+  }
+
+  async createCreditMapping(mapping: InsertCreditMapping): Promise<CreditMapping> {
+    const [newMapping] = await db.insert(creditMappings).values(mapping).returning();
+    return newMapping;
+  }
+
+  async getCreditMappings(childId: string): Promise<CreditMapping[]> {
+    return await db
+      .select()
+      .from(creditMappings)
+      .where(eq(creditMappings.childId, childId))
+      .orderBy(creditMappings.weekNumber);
+  }
+
+  async updateCreditMapping(mappingId: string, updates: Partial<InsertCreditMapping>): Promise<CreditMapping> {
+    const [updated] = await db
+      .update(creditMappings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(creditMappings.id, mappingId))
+      .returning();
+    return updated;
+  }
+
+  async deleteCreditMapping(mappingId: string): Promise<void> {
+    await db.delete(creditMappings).where(eq(creditMappings.id, mappingId));
   }
 }
 
