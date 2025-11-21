@@ -224,7 +224,8 @@ function calculateDriveTime(lat1: number, lon1: number, lat2: number, lon2: numb
 async function generateCurriculum(
   family: any,
   children: any[],
-  localOpps: any[]
+  localOpps: any[],
+  familyApproach?: string | null
 ): Promise<CurriculumData> {
   const today = new Date();
   const seasonMap: Record<string, string> = {
@@ -245,6 +246,48 @@ async function generateCurriculum(
       learningStyle: child.learningStyle || "Mixed",
     };
   });
+  
+  // Map approach code to name and emphasis
+  const approachMap: Record<string, { name: string; emphasis: string }> = {
+    "perfect-blend": { 
+      name: "Perfect Blend (AI Recommended)", 
+      emphasis: "Seamlessly blend ALL pedagogies with balanced emphasis. Use AI discretion to match activities to each child's age and interests." 
+    },
+    "charlotte-mason": { 
+      name: "Charlotte Mason", 
+      emphasis: "PRIORITIZE living books, narration, nature study, short lessons, habit training, and feast over famine. Weave in other methods but keep Charlotte Mason principles central." 
+    },
+    "montessori": { 
+      name: "Montessori", 
+      emphasis: "PRIORITIZE hands-on materials, self-directed activities, practical life skills, and cosmic education. Use mixed-age activities where possible." 
+    },
+    "waldorf": { 
+      name: "Waldorf/Steiner", 
+      emphasis: "PRIORITIZE imagination-first storytelling, head-heart-hands balance, seasonal rhythms, festivals, artistic expression (watercolour, beeswax, form drawing), and movement. Keep screens minimal." 
+    },
+    "unschooling": { 
+      name: "Unschooling/Child-Led", 
+      emphasis: "PRIORITIZE following the child's natural curiosity, strewing interesting materials, deep rabbit holes, real-world learning, and minimal structured lessons. Trust the child's intrinsic motivation." 
+    },
+    "project-based": { 
+      name: "Project-Based Learning", 
+      emphasis: "PRIORITIZE long-term projects, big driving questions, real-world application, exhibitions of learning, and cross-disciplinary integration. Make learning tangible and purposeful." 
+    },
+    "nature-based": { 
+      name: "Nature-Based/Forest School", 
+      emphasis: "PRIORITIZE outdoor time daily, nature connection, seasonal living, wonder walks, nature tables, mud kitchens, and risky play. Bring learning outside whenever possible." 
+    },
+    "gameschooling": { 
+      name: "Gameschooling", 
+      emphasis: "PRIORITIZE board games, card games, RPGs, and active play as core learning vehicles. Make math, history, strategy, and logic fun through gameplay." 
+    },
+    "steam": { 
+      name: "STEAM/STEM", 
+      emphasis: "PRIORITIZE hands-on science experiments, engineering challenges, technology integration (coding, robotics), arts integration, and mathematical thinking. Keep it inquiry-driven, not worksheet-driven." 
+    }
+  };
+
+  const selectedApproach = approachMap[familyApproach || "perfect-blend"];
 
   const opportunitiesInfo = localOpps.slice(0, 20).map(opp => ({
     name: opp.name,
@@ -290,6 +333,8 @@ FAMILY CONTEXT:
 - Season: ${season}
 - Travel Radius: ${family.travelRadiusMinutes} minutes
 - Flex for High Interest: ${family.flexForHighInterest ? "Yes" : "No"}
+- Learning Approach: ${selectedApproach.name}
+  → ${selectedApproach.emphasis}
 
 CHILDREN:
 ${childrenInfo.map(child => `- ${child.name} (age ${child.age}): Interests: ${child.interests.join(", ")}; Learning style: ${child.learningStyle}`).join("\n")}
@@ -565,7 +610,7 @@ router.get("/api/auth/user", isAuthenticated, async (req: any, res: Response) =>
 // Onboarding endpoint
 router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Response) => {
   try {
-    const { familyName, country, address, travelRadiusMinutes, flexForHighInterest, children: childrenData } = req.body;
+    const { familyName, country, address, travelRadiusMinutes, flexForHighInterest, learningApproach, children: childrenData } = req.body;
 
     if (!req.user?.id) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -594,6 +639,14 @@ router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Respon
       travelRadiusMinutes,
       flexForHighInterest,
     });
+
+    // Save family learning approach if provided
+    if (learningApproach) {
+      await storage.saveFamilyApproach({
+        familyId: family.id,
+        approach: learningApproach,
+      });
+    }
 
     // Create children
     const createdChildren = [];
@@ -644,7 +697,7 @@ router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Respon
         throw new Error("No AI provider configured. Please set XAI_API_KEY or ANTHROPIC_API_KEY environment variable.");
       }
       
-      const curriculumData = await generateCurriculum(family, createdChildren, opportunities);
+      const curriculumData = await generateCurriculum(family, createdChildren, opportunities, learningApproach);
 
       await storage.createCurriculum({
         familyId: family.id,
@@ -857,9 +910,10 @@ router.post("/api/curriculum/regenerate", isAuthenticated, async (req: Request, 
 
     const children = await storage.getChildren(family.id);
     const opportunities = await storage.getOpportunities(family.id);
+    const familyApproach = await storage.getFamilyApproach(family.id);
 
     // Generate new curriculum
-    const curriculumData = await generateCurriculum(family, children, opportunities);
+    const curriculumData = await generateCurriculum(family, children, opportunities, familyApproach?.approach);
 
     // Deactivate old curricula
     await storage.deactivateAllCurricula(family.id);

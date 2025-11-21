@@ -102,6 +102,13 @@ export default function Onboarding() {
   const step3Form = useForm<Step3Data>({
     resolver: zodResolver(step3Schema),
     defaultValues: {
+      learningApproach: "perfect-blend",
+    },
+  });
+
+  const step4Form = useForm<Step4Data>({
+    resolver: zodResolver(step4Schema),
+    defaultValues: {
       children: [
         {
           name: "",
@@ -114,7 +121,7 @@ export default function Onboarding() {
   });
 
   const { mutate: submitOnboarding, isPending } = useMutation({
-    mutationFn: async (data: Step1Data & Step2Data & Step3Data) => {
+    mutationFn: async (data: Step1Data & Step2Data & Step3Data & Step4Data) => {
       const response = await apiRequest("POST", "/api/onboarding", data);
       return await response.json();
     },
@@ -165,11 +172,17 @@ export default function Onboarding() {
   };
 
   const onStep3Submit = (data: Step3Data) => {
-    if (!step1Data || !step2Data) return;
+    setStep3Data(data);
+    setStep(4);
+  };
+
+  const onStep4Submit = (data: Step4Data) => {
+    if (!step1Data || !step2Data || !step3Data) return;
 
     const fullData = {
       ...step1Data,
       ...step2Data,
+      ...step3Data,
       children: data.children.map((child) => ({
         ...child,
         interests: child.interests.split(",").map((i) => i.trim()),
@@ -180,8 +193,8 @@ export default function Onboarding() {
   };
 
   const addChild = () => {
-    const currentChildren = step3Form.getValues("children");
-    step3Form.setValue("children", [
+    const currentChildren = step4Form.getValues("children");
+    step4Form.setValue("children", [
       ...currentChildren,
       {
         name: "",
@@ -193,9 +206,9 @@ export default function Onboarding() {
   };
 
   const removeChild = (index: number) => {
-    const currentChildren = step3Form.getValues("children");
+    const currentChildren = step4Form.getValues("children");
     if (currentChildren.length > 1) {
-      step3Form.setValue(
+      step4Form.setValue(
         "children",
         currentChildren.filter((_, i) => i !== index)
       );
@@ -450,6 +463,53 @@ export default function Onboarding() {
             <CardHeader>
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="font-heading">Choose Your Learning Approach</CardTitle>
+                  <CardDescription>Select the educational philosophy that resonates with your family</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Form {...step3Form}>
+                <form onSubmit={step3Form.handleSubmit(onStep3Submit)} className="space-y-6">
+                  <FormField
+                    control={step3Form.control}
+                    name="learningApproach"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <LearningApproachSelector
+                            value={field.value as LearningApproach}
+                            onChange={field.onChange}
+                            hideTitle={true}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex gap-3">
+                    <Button type="button" variant="outline" onClick={() => setStep(2)} className="flex-1" data-testid="button-back">
+                      Back
+                    </Button>
+                    <Button type="submit" className="flex-1" data-testid="button-next-step-3">
+                      Continue
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        )}
+
+        {step === 4 && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Calendar className="w-5 h-5 text-primary" />
                 </div>
                 <div>
@@ -459,9 +519,9 @@ export default function Onboarding() {
               </div>
             </CardHeader>
             <CardContent>
-              <Form {...step3Form}>
-                <form onSubmit={step3Form.handleSubmit(onStep3Submit)} className="space-y-6">
-                  {step3Form.watch("children").map((_, index) => (
+              <Form {...step4Form}>
+                <form onSubmit={step4Form.handleSubmit(onStep4Submit)} className="space-y-6">
+                  {step4Form.watch("children").map((_, index) => (
                     <Card key={index} className="border-border">
                       <CardContent className="p-6 space-y-4">
                         <div className="flex items-center justify-between mb-2">
@@ -480,7 +540,7 @@ export default function Onboarding() {
                         </div>
 
                         <FormField
-                          control={step3Form.control}
+                          control={step4Form.control}
                           name={`children.${index}.name`}
                           render={({ field }) => (
                             <FormItem>
@@ -494,7 +554,7 @@ export default function Onboarding() {
                         />
 
                         <FormField
-                          control={step3Form.control}
+                          control={step4Form.control}
                           name={`children.${index}.birthdate`}
                           render={({ field }) => (
                             <FormItem>
@@ -508,7 +568,7 @@ export default function Onboarding() {
                         />
 
                         <FormField
-                          control={step3Form.control}
+                          control={step4Form.control}
                           name={`children.${index}.interests`}
                           render={({ field }) => (
                             <FormItem>
@@ -526,7 +586,7 @@ export default function Onboarding() {
                         />
 
                         <FormField
-                          control={step3Form.control}
+                          control={step4Form.control}
                           name={`children.${index}.learningStyle`}
                           render={({ field }) => (
                             <FormItem>
@@ -565,7 +625,7 @@ export default function Onboarding() {
                   </Button>
 
                   <div className="flex gap-3">
-                    <Button type="button" variant="outline" onClick={() => setStep(2)} className="flex-1" data-testid="button-back">
+                    <Button type="button" variant="outline" onClick={() => setStep(3)} className="flex-1" data-testid="button-back">
                       Back
                     </Button>
                     <Button type="submit" disabled={isPending} className="flex-1" data-testid="button-complete-onboarding">
