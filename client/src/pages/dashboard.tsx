@@ -141,6 +141,9 @@ export default function Dashboard() {
     mutationFn: async (weekNumber: number) => {
       const response = await fetch(`/api/curriculum/download-week?weekNumber=${weekNumber}`);
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("UNAUTHORIZED");
+        }
         throw new Error("Failed to download week");
       }
       const blob = await response.blob();
@@ -156,10 +159,21 @@ export default function Dashboard() {
     onSuccess: () => {
       toast({
         title: "Downloaded!",
-        description: "Your week plan is ready to print or use on tablet ✨",
+        description: "Your week plan is ready to print or use on tablet",
       });
     },
     onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Session Expired",
+          description: "Please sign in again.",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to download week",
