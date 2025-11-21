@@ -102,6 +102,10 @@ export const children = pgTable("children", {
   is2e: boolean("is_2e").notNull().default(false), // Twice exceptional (gifted + learning difference)
   hasDyslexia: boolean("has_dyslexia").notNull().default(false),
   dyslexiaIntensity: integer("dyslexia_intensity").default(0), // 0-10 scale
+  hasDysgraphia: boolean("has_dysgraphia").notNull().default(false),
+  dysgraphiaIntensity: integer("dysgraphia_intensity").default(0), // 0-10 scale
+  hasDyscalculia: boolean("has_dyscalculia").notNull().default(false),
+  dyscalculiaIntensity: integer("dyscalculia_intensity").default(0), // 0-10 scale
   hasAnxiety: boolean("has_anxiety").notNull().default(false),
   anxietyIntensity: integer("anxiety_intensity").default(0), // 0-10 scale
   isPerfectionist: boolean("is_perfectionist").notNull().default(false),
@@ -430,6 +434,7 @@ export const insertChildSchema = createInsertSchema(children).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  sensoryProfile: true, // Deprecated field - no longer collected via UI
 });
 
 export const insertCurriculumSchema = createInsertSchema(curricula).omit({

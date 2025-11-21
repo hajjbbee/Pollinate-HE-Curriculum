@@ -246,8 +246,7 @@ async function generateCurriculum(
       learningNeeds.push(`ADHD (intensity ${child.adhdIntensity}/10) - needs shorter lessons, movement breaks, fidget ideas`);
     }
     if (child.hasAutism) {
-      const sensoryNote = child.sensoryProfile ? ` - ${child.sensoryProfile} sensory profile` : '';
-      learningNeeds.push(`Autism (intensity ${child.autismIntensity}/10)${sensoryNote} - needs visual schedules, predictability, sensory supports`);
+      learningNeeds.push(`Sensory sensitivities (intensity ${child.autismIntensity}/10) - needs visual schedules, predictability, sensory supports`);
     }
     if (child.isGifted) {
       learningNeeds.push(`Gifted - benefits from advanced concepts, depth over breadth, interest-based intensity`);
@@ -257,6 +256,12 @@ async function generateCurriculum(
     }
     if (child.hasDyslexia) {
       learningNeeds.push(`Dyslexia (intensity ${child.dyslexiaIntensity}/10) - needs oral options, audiobooks, reduced written work`);
+    }
+    if (child.hasDysgraphia) {
+      learningNeeds.push(`Dysgraphia (intensity ${child.dysgraphiaIntensity}/10) - needs typing options, reduced writing, alternative outputs`);
+    }
+    if (child.hasDyscalculia) {
+      learningNeeds.push(`Dyscalculia (intensity ${child.dyscalculiaIntensity}/10) - needs manipulatives, visual maths, extra time, calculators`);
     }
     if (child.hasAnxiety) {
       learningNeeds.push(`Anxiety (intensity ${child.anxietyIntensity}/10) - needs choice boards, reduced pressure, gentle encouragement`);
@@ -350,13 +355,12 @@ Rules that must be followed in EVERY output:
 
 NEURODIVERGENT ADAPTATIONS - When a child has learning needs, automatically adapt activities:
 • ADHD: Shorter lessons (10-15 min), built-in movement breaks every 20 minutes, fidget-friendly activities (play dough while listening, squeeze ball during reading), timer games, high-energy outdoor options
-• Autism: Visual schedules (picture cards showing the day), predictable routines, sensory supports (quiet space option, headphones, weighted blanket), clear start/end times, minimal transitions
-  - Sensory Seeking: Add heavy work (carrying books, pushing furniture), crunchy snacks, movement breaks, textured materials
-  - Sensory Avoiding: Offer quiet workspace, reduce visual clutter, gentle sounds, soft lighting, optional activities
-  - Mixed Profile: Provide both sensory seeking and avoiding options as choices
+• Sensory sensitivities: Visual schedules (picture cards showing the day), predictable routines, sensory supports (quiet space option, headphones, weighted blanket, heavy work options, movement breaks, textured materials), clear start/end times, minimal transitions, reduce visual/auditory clutter
 • Gifted: Advanced concepts, depth over breadth, abstract thinking challenges, mentorship opportunities, passion projects that span weeks
 • 2e (Twice Exceptional): Combine advanced content with scaffolding, honor strengths while supporting challenges, allow multiple ways to demonstrate learning
 • Dyslexia: Oral response options, audiobooks (YouTube, Librivox), parent reads aloud, minimal writing requirements, voice-to-text, graphic novels
+• Dysgraphia: Typing instead of handwriting, voice-to-text apps, video reports instead of written, reduced copy work, alternative outputs (model-making, oral presentation), extra time for writing tasks
+• Dyscalculia: Hands-on manipulatives (counters, blocks, measuring cups), visual maths (number lines, hundred charts), calculators allowed, extra time for maths, real-world maths contexts, skip counting games
 • Anxiety: Choice boards (child picks 2 of 3 activities), low-stakes "try it" language, celebrate attempts not just success, gentle encouragement, no public performance pressure
 • Perfectionism: Growth mindset language ("mistakes are how we learn"), "good enough" practice, rough drafts celebrated, time limits to prevent overthinking
 
@@ -706,11 +710,14 @@ router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Respon
         adhdIntensity: childData.adhdIntensity ?? 0,
         hasAutism: childData.hasAutism ?? false,
         autismIntensity: childData.autismIntensity ?? 0,
-        sensoryProfile: childData.sensoryProfile ?? null,
         isGifted: childData.isGifted ?? false,
         is2e: childData.is2e ?? false,
         hasDyslexia: childData.hasDyslexia ?? false,
         dyslexiaIntensity: childData.dyslexiaIntensity ?? 0,
+        hasDysgraphia: childData.hasDysgraphia ?? false,
+        dysgraphiaIntensity: childData.dysgraphiaIntensity ?? 0,
+        hasDyscalculia: childData.hasDyscalculia ?? false,
+        dyscalculiaIntensity: childData.dyscalculiaIntensity ?? 0,
         hasAnxiety: childData.hasAnxiety ?? false,
         anxietyIntensity: childData.anxietyIntensity ?? 0,
         isPerfectionist: childData.isPerfectionist ?? false,
@@ -884,11 +891,14 @@ router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Re
           adhdIntensity: z.number().min(0).max(10).optional(),
           hasAutism: z.boolean().optional(),
           autismIntensity: z.number().min(0).max(10).optional(),
-          sensoryProfile: z.enum(["seeking", "avoiding", "mixed"]).nullable().optional(),
           isGifted: z.boolean().optional(),
           is2e: z.boolean().optional(),
           hasDyslexia: z.boolean().optional(),
           dyslexiaIntensity: z.number().min(0).max(10).optional(),
+          hasDysgraphia: z.boolean().optional(),
+          dysgraphiaIntensity: z.number().min(0).max(10).optional(),
+          hasDyscalculia: z.boolean().optional(),
+          dyscalculiaIntensity: z.number().min(0).max(10).optional(),
           hasAnxiety: z.boolean().optional(),
           anxietyIntensity: z.number().min(0).max(10).optional(),
           isPerfectionist: z.boolean().optional(),
@@ -951,11 +961,14 @@ router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Re
           adhdIntensity: childData.adhdIntensity ?? 0,
           hasAutism: childData.hasAutism ?? false,
           autismIntensity: childData.autismIntensity ?? 0,
-          sensoryProfile: childData.sensoryProfile ?? null,
           isGifted: childData.isGifted ?? false,
           is2e: childData.is2e ?? false,
           hasDyslexia: childData.hasDyslexia ?? false,
           dyslexiaIntensity: childData.dyslexiaIntensity ?? 0,
+          hasDysgraphia: childData.hasDysgraphia ?? false,
+          dysgraphiaIntensity: childData.dysgraphiaIntensity ?? 0,
+          hasDyscalculia: childData.hasDyscalculia ?? false,
+          dyscalculiaIntensity: childData.dyscalculiaIntensity ?? 0,
           hasAnxiety: childData.hasAnxiety ?? false,
           anxietyIntensity: childData.anxietyIntensity ?? 0,
           isPerfectionist: childData.isPerfectionist ?? false,
@@ -973,11 +986,14 @@ router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Re
           adhdIntensity: childData.adhdIntensity ?? 0,
           hasAutism: childData.hasAutism ?? false,
           autismIntensity: childData.autismIntensity ?? 0,
-          sensoryProfile: childData.sensoryProfile ?? null,
           isGifted: childData.isGifted ?? false,
           is2e: childData.is2e ?? false,
           hasDyslexia: childData.hasDyslexia ?? false,
           dyslexiaIntensity: childData.dyslexiaIntensity ?? 0,
+          hasDysgraphia: childData.hasDysgraphia ?? false,
+          dysgraphiaIntensity: childData.dysgraphiaIntensity ?? 0,
+          hasDyscalculia: childData.hasDyscalculia ?? false,
+          dyscalculiaIntensity: childData.dyscalculiaIntensity ?? 0,
           hasAnxiety: childData.hasAnxiety ?? false,
           anxietyIntensity: childData.anxietyIntensity ?? 0,
           isPerfectionist: childData.isPerfectionist ?? false,

@@ -43,11 +43,14 @@ const familySettingsSchema = z.object({
       adhdIntensity: z.number().min(0).max(10).optional(),
       hasAutism: z.boolean().optional(),
       autismIntensity: z.number().min(0).max(10).optional(),
-      sensoryProfile: z.enum(["seeking", "avoiding", "mixed"]).optional(),
       isGifted: z.boolean().optional(),
       is2e: z.boolean().optional(),
       hasDyslexia: z.boolean().optional(),
       dyslexiaIntensity: z.number().min(0).max(10).optional(),
+      hasDysgraphia: z.boolean().optional(),
+      dysgraphiaIntensity: z.number().min(0).max(10).optional(),
+      hasDyscalculia: z.boolean().optional(),
+      dyscalculiaIntensity: z.number().min(0).max(10).optional(),
       hasAnxiety: z.boolean().optional(),
       anxietyIntensity: z.number().min(0).max(10).optional(),
       isPerfectionist: z.boolean().optional(),
@@ -105,11 +108,14 @@ export default function FamilySettings() {
           adhdIntensity: 0,
           hasAutism: false,
           autismIntensity: 0,
-          sensoryProfile: undefined,
           isGifted: false,
           is2e: false,
           hasDyslexia: false,
           dyslexiaIntensity: 0,
+          hasDysgraphia: false,
+          dysgraphiaIntensity: 0,
+          hasDyscalculia: false,
+          dyscalculiaIntensity: 0,
           hasAnxiety: false,
           anxietyIntensity: 0,
           isPerfectionist: false,
@@ -143,11 +149,14 @@ export default function FamilySettings() {
           adhdIntensity: child.adhdIntensity ?? 0,
           hasAutism: child.hasAutism ?? false,
           autismIntensity: child.autismIntensity ?? 0,
-          sensoryProfile: child.sensoryProfile,
           isGifted: child.isGifted ?? false,
           is2e: child.is2e ?? false,
           hasDyslexia: child.hasDyslexia ?? false,
           dyslexiaIntensity: child.dyslexiaIntensity ?? 0,
+          hasDysgraphia: child.hasDysgraphia ?? false,
+          dysgraphiaIntensity: child.dysgraphiaIntensity ?? 0,
+          hasDyscalculia: child.hasDyscalculia ?? false,
+          dyscalculiaIntensity: child.dyscalculiaIntensity ?? 0,
           hasAnxiety: child.hasAnxiety ?? false,
           anxietyIntensity: child.anxietyIntensity ?? 0,
           isPerfectionist: child.isPerfectionist ?? false,
@@ -519,11 +528,14 @@ export default function FamilySettings() {
                     adhdIntensity: 0,
                     hasAutism: false,
                     autismIntensity: 0,
-                    sensoryProfile: undefined,
                     isGifted: false,
                     is2e: false,
                     hasDyslexia: false,
                     dyslexiaIntensity: 0,
+                    hasDysgraphia: false,
+                    dysgraphiaIntensity: 0,
+                    hasDyscalculia: false,
+                    dyscalculiaIntensity: 0,
                     hasAnxiety: false,
                     anxietyIntensity: 0,
                     isPerfectionist: false,
@@ -635,7 +647,7 @@ export default function FamilySettings() {
                           movement breaks, visual schedules, and sensory supports.
                         </p>
 
-                        {/* ADHD / Attention Differences */}
+                        {/* Focus / Attention */}
                         <div className="space-y-3 p-3 border rounded-lg">
                           <FormField
                             control={form.control}
@@ -643,7 +655,7 @@ export default function FamilySettings() {
                             render={({ field }) => (
                               <FormItem className="flex flex-row items-center justify-between">
                                 <div className="space-y-0.5">
-                                  <FormLabel className="text-base">ADHD / Attention Differences</FormLabel>
+                                  <FormLabel className="text-base">Focus/Attention</FormLabel>
                                   <FormDescription>Adapts with shorter lessons, fidget ideas, movement breaks</FormDescription>
                                 </div>
                                 <FormControl>
@@ -676,7 +688,7 @@ export default function FamilySettings() {
                           )}
                         </div>
 
-                        {/* Autism / Sensory Profile */}
+                        {/* Sensory sensitivities */}
                         <div className="space-y-3 p-3 border rounded-lg">
                           <FormField
                             control={form.control}
@@ -684,7 +696,7 @@ export default function FamilySettings() {
                             render={({ field }) => (
                               <FormItem className="flex flex-row items-center justify-between">
                                 <div className="space-y-0.5">
-                                  <FormLabel className="text-base">Autism / Sensory Profile</FormLabel>
+                                  <FormLabel className="text-base">Sensory sensitivities</FormLabel>
                                   <FormDescription>Adapts with visual schedules, sensory supports, predictability</FormDescription>
                                 </div>
                                 <FormControl>
@@ -694,55 +706,35 @@ export default function FamilySettings() {
                             )}
                           />
                           {form.watch(`children.${index}.hasAutism`) && (
-                            <>
-                              <FormField
-                                control={form.control}
-                                name={`children.${index}.autismIntensity`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Intensity (0-10)</FormLabel>
-                                    <FormControl>
-                                      <Slider
-                                        min={0}
-                                        max={10}
-                                        step={1}
-                                        value={[field.value || 0]}
-                                        onValueChange={(vals) => field.onChange(vals[0])}
-                                        data-testid={`slider-autism-intensity-${index}`}
-                                      />
-                                    </FormControl>
-                                    <FormDescription>Current: {field.value || 0}/10</FormDescription>
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name={`children.${index}.sensoryProfile`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Sensory Profile</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                      <FormControl>
-                                        <SelectTrigger data-testid={`select-sensory-${index}`}>
-                                          <SelectValue placeholder="Select sensory profile" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        <SelectItem value="seeking">Sensory Seeking</SelectItem>
-                                        <SelectItem value="avoiding">Sensory Avoiding</SelectItem>
-                                        <SelectItem value="mixed">Mixed Profile</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <FormDescription>How your child responds to sensory input</FormDescription>
-                                  </FormItem>
-                                )}
-                              />
-                            </>
+                            <FormField
+                              control={form.control}
+                              name={`children.${index}.autismIntensity`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Intensity (0-10)</FormLabel>
+                                  <FormControl>
+                                    <Slider
+                                      min={0}
+                                      max={10}
+                                      step={1}
+                                      value={[field.value || 0]}
+                                      onValueChange={(vals) => field.onChange(vals[0])}
+                                      data-testid={`slider-autism-intensity-${index}`}
+                                    />
+                                  </FormControl>
+                                  <FormDescription>Current: {field.value || 0}/10</FormDescription>
+                                </FormItem>
+                              )}
+                            />
                           )}
                         </div>
 
-                        {/* Gifted / 2e */}
+                        {/* Extended abilities */}
                         <div className="space-y-3 p-3 border rounded-lg">
+                          <div className="mb-2">
+                            <h4 className="text-base font-medium">Extended abilities</h4>
+                            <p className="text-sm text-muted-foreground">Advanced learning needs and giftedness</p>
+                          </div>
                           <FormField
                             control={form.control}
                             name={`children.${index}.isGifted`}
@@ -807,6 +799,88 @@ export default function FamilySettings() {
                                       value={[field.value || 0]}
                                       onValueChange={(vals) => field.onChange(vals[0])}
                                       data-testid={`slider-dyslexia-intensity-${index}`}
+                                    />
+                                  </FormControl>
+                                  <FormDescription>Current: {field.value || 0}/10</FormDescription>
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                        </div>
+
+                        {/* Dysgraphia / Writing Differences */}
+                        <div className="space-y-3 p-3 border rounded-lg">
+                          <FormField
+                            control={form.control}
+                            name={`children.${index}.hasDysgraphia`}
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">Dysgraphia / Writing Differences</FormLabel>
+                                  <FormDescription>Typing options, reduced writing, alternative outputs</FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch checked={field.value} onCheckedChange={field.onChange} data-testid={`switch-dysgraphia-${index}`} />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          {form.watch(`children.${index}.hasDysgraphia`) && (
+                            <FormField
+                              control={form.control}
+                              name={`children.${index}.dysgraphiaIntensity`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Intensity (0-10)</FormLabel>
+                                  <FormControl>
+                                    <Slider
+                                      min={0}
+                                      max={10}
+                                      step={1}
+                                      value={[field.value || 0]}
+                                      onValueChange={(vals) => field.onChange(vals[0])}
+                                      data-testid={`slider-dysgraphia-intensity-${index}`}
+                                    />
+                                  </FormControl>
+                                  <FormDescription>Current: {field.value || 0}/10</FormDescription>
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                        </div>
+
+                        {/* Dyscalculia / Maths Differences */}
+                        <div className="space-y-3 p-3 border rounded-lg">
+                          <FormField
+                            control={form.control}
+                            name={`children.${index}.hasDyscalculia`}
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">Dyscalculia / Maths Differences</FormLabel>
+                                  <FormDescription>Manipulatives, visual maths, extra time, calculators</FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch checked={field.value} onCheckedChange={field.onChange} data-testid={`switch-dyscalculia-${index}`} />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          {form.watch(`children.${index}.hasDyscalculia`) && (
+                            <FormField
+                              control={form.control}
+                              name={`children.${index}.dyscalculiaIntensity`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Intensity (0-10)</FormLabel>
+                                  <FormControl>
+                                    <Slider
+                                      min={0}
+                                      max={10}
+                                      step={1}
+                                      value={[field.value || 0]}
+                                      onValueChange={(vals) => field.onChange(vals[0])}
+                                      data-testid={`slider-dyscalculia-intensity-${index}`}
                                     />
                                   </FormControl>
                                   <FormDescription>Current: {field.value || 0}/10</FormDescription>
