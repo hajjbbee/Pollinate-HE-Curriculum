@@ -52,6 +52,11 @@ export default function Journal() {
     enabled: !!user,
   });
 
+  const { data: journalEntries, isLoading: journalLoading } = useQuery({
+    queryKey: ["/api/journal"],
+    enabled: !!user,
+  });
+
   const completedIds = dailyCompletionData?.completedIds || [];
   const hasCompletedActivities = completedIds.length > 0;
 
@@ -320,6 +325,87 @@ export default function Journal() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 mt-8 space-y-6">
+        {/* Voice Journal Entries */}
+        {journalEntries && (journalEntries as any[]).length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-heading text-xl flex items-center gap-2">
+                <Mic className="w-5 h-5 text-primary" />
+                Voice Journal Entries
+              </CardTitle>
+              <CardDescription>Your recorded learning moments</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(journalEntries as any[]).map((entry: any) => {
+                const child = (children as any[])?.find((c: any) => c.id === entry.childId);
+                
+                return (
+                  <div key={entry.id} className="border border-border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {child?.name || "Unknown"}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {format(new Date(entry.entryDate), "MMM d, yyyy")}
+                        </span>
+                      </div>
+                      {entry.audioDuration && (
+                        <Badge variant="secondary" className="text-xs">
+                          {entry.audioDuration}s
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Audio Player */}
+                    {entry.audioUrl && (
+                      <div className="p-3 bg-muted rounded-lg border border-border">
+                        <p className="text-xs text-muted-foreground mb-2">Recording:</p>
+                        <audio 
+                          controls 
+                          src={entry.audioUrl}
+                          className="w-full"
+                          data-testid={`audio-player-${entry.id}`}
+                        />
+                      </div>
+                    )}
+
+                    {/* Entry Content/Transcript */}
+                    {entry.content && (
+                      <div className="text-sm text-foreground">
+                        <p className="font-medium mb-1">Summary:</p>
+                        <p className="text-muted-foreground">{entry.content}</p>
+                      </div>
+                    )}
+
+                    {/* AI Follow-up Questions & Answers */}
+                    {entry.aiFollowUpQuestions && entry.aiFollowUpQuestions.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Sparkles className="w-4 h-4 text-primary" />
+                          <p className="text-sm font-medium">AI Follow-up Questions</p>
+                        </div>
+                        <div className="space-y-3">
+                          {entry.aiFollowUpQuestions.map((question: string, idx: number) => (
+                            <div key={idx} className="space-y-1">
+                              <p className="text-sm font-medium text-foreground">{question}</p>
+                              {entry.followUpAnswers && entry.followUpAnswers[idx] && (
+                                <p className="text-sm text-muted-foreground pl-4 border-l-2 border-primary/30">
+                                  {entry.followUpAnswers[idx]}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Completed Activities Feedback */}
         {completedActivities.length > 0 && (
           <Card>

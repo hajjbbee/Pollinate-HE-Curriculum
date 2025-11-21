@@ -58,6 +58,7 @@ export interface IStorage {
   getJournalEntries(familyId: string): Promise<JournalEntry[]>;
   getJournalEntriesByChild(childId: string): Promise<JournalEntry[]>;
   updateJournalEntry(entryId: string, updates: Partial<InsertJournalEntry>): Promise<JournalEntry>;
+  updateJournalEntryFollowUpAnswers(entryId: string, answers: string[]): Promise<JournalEntry>;
   deleteJournalEntry(entryId: string): Promise<void>;
 
   // Local Opportunities
@@ -291,6 +292,15 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .update(journalEntries)
       .set({ ...updates, updatedAt: new Date() })
+      .where(eq(journalEntries.id, entryId))
+      .returning();
+    return result;
+  }
+
+  async updateJournalEntryFollowUpAnswers(entryId: string, answers: string[]): Promise<JournalEntry> {
+    const [result] = await db
+      .update(journalEntries)
+      .set({ followUpAnswers: answers, updatedAt: new Date() })
       .where(eq(journalEntries.id, entryId))
       .returning();
     return result;

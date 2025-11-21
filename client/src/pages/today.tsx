@@ -23,6 +23,8 @@ export default function Today() {
   const { isRecording, audioBlob, audioUrl, duration, error: recordingError, startRecording, stopRecording, resetRecording } = useVoiceRecording();
   const [summary, setSummary] = useState("");
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
+  const [followUpAnswers, setFollowUpAnswers] = useState<string[]>([]);
+  const [savedEntryId, setSavedEntryId] = useState<string | null>(null);
 
   const { data: familyData } = useQuery({
     queryKey: ["/api/family"],
@@ -119,18 +121,44 @@ export default function Today() {
   };
 
   const saveJournalMutation = useMutation({
-    mutationFn: async (data: { summary: string }) => {
+    mutationFn: async (data: { summary: string; audioUrl?: string }) => {
+      // If we have an audio blob, upload it first
+      let uploadedAudioUrl = data.audioUrl;
+      if (audioBlob && !uploadedAudioUrl) {
+        // Get upload URL
+        const uploadResponse = await apiRequest('/api/objects/upload', {
+          method: 'POST',
+        });
+        const { uploadURL } = uploadResponse;
+        
+        // Upload the audio blob
+        await fetch(uploadURL, {
+          method: 'PUT',
+          body: audioBlob,
+          headers: {
+            'Content-Type': audioBlob.type,
+          },
+        });
+        
+        // Extract the object path from the upload URL (before the query string)
+        const urlObj = new URL(uploadURL);
+        uploadedAudioUrl = urlObj.pathname;
+      }
+      
       return await apiRequest('/api/journal-voice', {
         method: 'POST',
         body: JSON.stringify({ 
           transcript: data.summary,
           duration: duration,
+          audioUrl: uploadedAudioUrl,
         }),
       });
     },
     onSuccess: (data: any) => {
+      setSavedEntryId(data.entry?.id);
       if (data.followUpQuestions && data.followUpQuestions.length > 0) {
         setFollowUpQuestions(data.followUpQuestions);
+        setFollowUpAnswers(new Array(data.followUpQuestions.length).fill(""));
         toast({
           title: "Voice note saved!",
           description: "We've generated some follow-up questions to help you reflect.",
@@ -145,10 +173,10 @@ export default function Today() {
       }
       queryClient.invalidateQueries({ queryKey: ['/api/journal'] });
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
         title: "Error saving voice note",
-        description: "Please try again.",
+        description: error.message || "Please try again.",
         variant: "destructive",
       });
     },
@@ -178,7 +206,37 @@ export default function Today() {
     resetRecording();
     setSummary("");
     setFollowUpQuestions([]);
+    setFollowUpAnswers([]);
+    setSavedEntryId(null);
   };
+
+  const saveAnswersMutation = useMutation({
+    mutationFn: async (data: { entryId: string; answers: string[] }) => {
+      return await apiRequest(`/api/journal/${data.entryId}/follow-up-answers`, {
+        method: 'PATCH',
+        body: JSON.stringify({ answers: data.answers }),
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Answers saved!",
+        description: "Thank you for the additional reflection.",
+      });
+      setFollowUpQuestions([]);
+      setFollowUpAnswers([]);
+      setSavedEntryId(null);
+      resetRecording();
+      setSummary("");
+      queryClient.invalidateQueries({ queryKey: ['/api/journal'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error saving answers",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   useEffect(() => {
     if (recordingError) {
@@ -483,6 +541,12 @@ export default function Today() {
                           <p className="text-sm font-medium">{question}</p>
                           <Textarea
                             placeholder="Your thoughts..."
+                            value={followUpAnswers[idx] || ""}
+                            onChange={(e) => {
+                              const newAnswers = [...followUpAnswers];
+                              newAnswers[idx] = e.target.value;
+                              setFollowUpAnswers(newAnswers);
+                            }}
                             className="min-h-[60px] text-sm"
                             data-testid={`input-follow-up-${idx}`}
                           />
@@ -494,23 +558,25 @@ export default function Today() {
                         size="sm"
                         variant="default"
                         onClick={() => {
-                          toast({
-                            title: "Answers saved!",
-                            description: "Thank you for the additional context.",
-                          });
-                          setFollowUpQuestions([]);
-                          resetRecording();
-                          setSummary("");
+                          if (savedEntryId) {
+                            saveAnswersMutation.mutate({
+                              entryId: savedEntryId,
+                              answers: followUpAnswers,
+                            });
+                          }
                         }}
+                        disabled={saveAnswersMutation.isPending || !savedEntryId}
                         data-testid="button-save-answers"
                       >
-                        Save Answers
+                        {saveAnswersMutation.isPending ? "Saving..." : "Save Answers"}
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => {
                           setFollowUpQuestions([]);
+                          setFollowUpAnswers([]);
+                          setSavedEntryId(null);
                           resetRecording();
                           setSummary("");
                         }}

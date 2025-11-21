@@ -1215,6 +1215,34 @@ router.get("/api/journal", isAuthenticated, async (req: Request, res: Response) 
   }
 });
 
+// Save follow-up question answers
+router.patch("/api/journal/:entryId/follow-up-answers", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const { entryId } = req.params;
+    const { answers } = req.body;
+
+    if (!Array.isArray(answers)) {
+      return res.status(400).json({ error: "Answers must be an array" });
+    }
+
+    await storage.updateJournalEntryFollowUpAnswers(entryId, answers);
+    
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error saving follow-up answers:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Activity Feedback (emoji reactions for planned activities)
 router.post("/api/activity-feedback", isAuthenticated, async (req: Request, res: Response) => {
   try {
