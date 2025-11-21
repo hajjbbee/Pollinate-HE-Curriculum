@@ -19,6 +19,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { PlacesAutocomplete } from "@/components/PlacesAutocomplete";
 import { LearningApproachSelector, type LearningApproach } from "@/components/LearningApproachSelector";
+import { PrivacyBanner } from "@/components/PrivacyBanner";
 
 const step1Schema = z.object({
   familyName: z.string().min(1, "Family name is required"),
@@ -289,6 +290,9 @@ export default function Onboarding() {
               />
             ))}
           </div>
+          
+          {/* Privacy Banner */}
+          <PrivacyBanner />
         </div>
 
         {step === 1 && (

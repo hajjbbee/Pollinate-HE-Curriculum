@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useMobile } from "@/hooks/useMobile";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger } from "@/components/ui/sidebar";
-import { Home, BookOpen, MapPin, Settings as SettingsIcon, Sparkles, LogOut } from "lucide-react";
+import { Home, BookOpen, MapPin, Settings as SettingsIcon, Sparkles, LogOut, Shield } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import Landing from "@/pages/landing";
@@ -19,6 +19,7 @@ import ProgressPage from "@/pages/progress";
 import Journal from "@/pages/journal";
 import Opportunities from "@/pages/opportunities";
 import FamilySettings from "@/pages/family-settings";
+import Privacy from "@/pages/privacy";
 import Pricing from "@/pages/pricing";
 import NotFound from "@/pages/not-found";
 import { BottomNav } from "@/components/BottomNav";
@@ -33,6 +34,7 @@ function AppSidebar() {
     { title: "Journal", url: "/journal", icon: BookOpen },
     { title: "Opportunities", url: "/opportunities", icon: MapPin },
     { title: "Settings", url: "/settings", icon: SettingsIcon },
+    { title: "Privacy & Safety", url: "/privacy", icon: Shield },
   ];
 
   const getInitials = (name: string) => {
@@ -124,6 +126,7 @@ function MobileRouter() {
         <Route path="/journal" component={Journal} />
         <Route path="/opportunities" component={Opportunities} />
         <Route path="/settings" component={FamilySettings} />
+        <Route path="/privacy" component={Privacy} />
         <Route path="/pricing" component={Pricing} />
         <Route component={NotFound} />
       </Switch>
@@ -144,6 +147,7 @@ function DesktopRouter() {
       <Route path="/journal" component={Journal} />
       <Route path="/opportunities" component={Opportunities} />
       <Route path="/settings" component={FamilySettings} />
+      <Route path="/privacy" component={Privacy} />
       <Route path="/pricing" component={Pricing} />
       <Route component={NotFound} />
     </Switch>
@@ -155,6 +159,7 @@ function PublicRouter() {
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/onboarding" component={Onboarding} />
+      <Route path="/privacy" component={Privacy} />
       <Route path="/pricing" component={Pricing} />
       <Route component={NotFound} />
     </Switch>

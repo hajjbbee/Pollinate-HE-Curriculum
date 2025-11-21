@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { PrivacyBanner } from "@/components/PrivacyBanner";
 import { BookOpen, Star, Smile, Meh, ChevronDown, ChevronUp, Sparkles, Mic, Image as ImageIcon } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
@@ -325,6 +326,9 @@ export default function Journal() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 mt-8 space-y-6">
+        {/* Privacy Banner */}
+        <PrivacyBanner />
+        
         {/* Voice Journal Entries */}
         {journalEntries && (journalEntries as any[]).length > 0 && (
           <Card>
