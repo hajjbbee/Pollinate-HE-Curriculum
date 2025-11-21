@@ -910,6 +910,222 @@ router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Re
   }
 });
 
+// Privacy & Data Management Routes
+
+// Download all family data as ZIP
+router.get("/api/family/export-data", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const allData = await storage.getAllFamilyData(req.user.id);
+    
+    if (!allData.family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const archiver = await import("archiver");
+    const PDFDocument = (await import("pdfkit")).default;
+    
+    const archive = archiver.default("zip", { zlib: { level: 9 } });
+    
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="pollinate-family-data-${Date.now()}.zip"`);
+    
+    archive.pipe(res);
+
+    // Add JSON data file
+    archive.append(JSON.stringify(allData, null, 2), { name: "family-data.json" });
+
+    // Create PDF summary
+    const doc = new PDFDocument();
+    const pdfBuffers: Buffer[] = [];
+    doc.on("data", pdfBuffers.push.bind(pdfBuffers));
+    
+    doc.fontSize(20).text("Pollinate Family Data Export", { align: "center" });
+    doc.moveDown();
+    doc.fontSize(14).text(`Family: ${allData.family.familyName}`);
+    doc.fontSize(12).text(`Location: ${allData.family.city}, ${allData.family.state}, ${allData.family.country}`);
+    doc.moveDown();
+    
+    doc.fontSize(16).text("Children:");
+    allData.children.forEach((child) => {
+      doc.fontSize(12).text(`• ${child.name} (born ${child.birthdate})`);
+      doc.fontSize(10).text(`  Interests: ${child.interests.join(", ")}`);
+    });
+    
+    doc.moveDown();
+    doc.fontSize(16).text(`Journal Entries: ${allData.journalEntries.length}`);
+    doc.fontSize(16).text(`Curricula: ${allData.curricula.length}`);
+    
+    doc.end();
+    
+    await new Promise<void>((resolve) => {
+      doc.on("end", () => {
+        const pdfBuffer = Buffer.concat(pdfBuffers);
+        archive.append(pdfBuffer, { name: "family-summary.pdf" });
+        resolve();
+      });
+    });
+
+    // Download photos from object storage if they exist
+    const objectStorage = new ObjectStorageService();
+    for (const entry of allData.journalEntries) {
+      if (entry.photoUrls && entry.photoUrls.length > 0) {
+        for (let i = 0; i < entry.photoUrls.length; i++) {
+          try {
+            const photoUrl = entry.photoUrls[i];
+            const fileName = photoUrl.split("/").pop() || `photo-${i}.jpg`;
+            const photoStream = await objectStorage.getObject(photoUrl);
+            archive.append(photoStream, { name: `photos/journal/${fileName}` });
+          } catch (err) {
+            console.error("Error downloading photo:", err);
+          }
+        }
+      }
+    }
+    
+    for (const feedback of allData.activityFeedback) {
+      if (feedback.photoUrls && feedback.photoUrls.length > 0) {
+        for (let i = 0; i < feedback.photoUrls.length; i++) {
+          try {
+            const photoUrl = feedback.photoUrls[i];
+            const fileName = photoUrl.split("/").pop() || `photo-${i}.jpg`;
+            const photoStream = await objectStorage.getObject(photoUrl);
+            archive.append(photoStream, { name: `photos/activities/${fileName}` });
+          } catch (err) {
+            console.error("Error downloading photo:", err);
+          }
+        }
+      }
+    }
+
+    await archive.finalize();
+  } catch (error: any) {
+    console.error("Export data error:", error);
+    res.status(500).json({ error: error.message || "Failed to export data" });
+  }
+});
+
+// Delete all photos and journal entries
+router.delete("/api/family/photos-journals", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    // Delete from object storage first
+    const journalEntries = await storage.getJournalEntries(family.id);
+    const children = await storage.getChildren(family.id);
+    const objectStorage = new ObjectStorageService();
+    
+    for (const entry of journalEntries) {
+      if (entry.photoUrls && entry.photoUrls.length > 0) {
+        for (const photoUrl of entry.photoUrls) {
+          try {
+            await objectStorage.deleteObject(photoUrl);
+          } catch (err) {
+            console.error("Error deleting photo from storage:", err);
+          }
+        }
+      }
+      
+      if (entry.audioUrl) {
+        try {
+          await objectStorage.deleteObject(entry.audioUrl);
+        } catch (err) {
+          console.error("Error deleting audio from storage:", err);
+        }
+      }
+    }
+    
+    for (const child of children) {
+      const activityFeedback = await storage.getActivityFeedbackByChild(child.id);
+      for (const feedback of activityFeedback) {
+        if (feedback.photoUrls && feedback.photoUrls.length > 0) {
+          for (const photoUrl of feedback.photoUrls) {
+            try {
+              await objectStorage.deleteObject(photoUrl);
+            } catch (err) {
+              console.error("Error deleting activity photo from storage:", err);
+            }
+          }
+        }
+      }
+    }
+
+    // Delete database records
+    await storage.deleteAllPhotosAndJournals(family.id);
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Delete photos and journals error:", error);
+    res.status(500).json({ error: error.message || "Failed to delete photos and journals" });
+  }
+});
+
+// Delete entire account and all data
+router.delete("/api/family/account", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Delete from object storage first
+    const allData = await storage.getAllFamilyData(req.user.id);
+    const objectStorage = new ObjectStorageService();
+    
+    for (const entry of allData.journalEntries) {
+      if (entry.photoUrls && entry.photoUrls.length > 0) {
+        for (const photoUrl of entry.photoUrls) {
+          try {
+            await objectStorage.deleteObject(photoUrl);
+          } catch (err) {
+            console.error("Error deleting photo from storage:", err);
+          }
+        }
+      }
+      
+      if (entry.audioUrl) {
+        try {
+          await objectStorage.deleteObject(entry.audioUrl);
+        } catch (err) {
+          console.error("Error deleting audio from storage:", err);
+        }
+      }
+    }
+    
+    for (const feedback of allData.activityFeedback) {
+      if (feedback.photoUrls && feedback.photoUrls.length > 0) {
+        for (const photoUrl of feedback.photoUrls) {
+          try {
+            await objectStorage.deleteObject(photoUrl);
+          } catch (err) {
+            console.error("Error deleting activity photo from storage:", err);
+          }
+        }
+      }
+    }
+
+    // Delete account (cascades to all family data via foreign keys)
+    await storage.deleteAccount(req.user.id);
+
+    // Clear session and redirect to home
+    req.logout(() => {
+      res.json({ success: true });
+    });
+  } catch (error: any) {
+    console.error("Delete account error:", error);
+    res.status(500).json({ error: error.message || "Failed to delete account" });
+  }
+});
+
 // Get children
 router.get("/api/children", isAuthenticated, async (req: Request, res: Response) => {
   try {
