@@ -22,6 +22,7 @@ import FamilySettings from "@/pages/family-settings";
 import Pricing from "@/pages/pricing";
 import NotFound from "@/pages/not-found";
 import { BottomNav } from "@/components/BottomNav";
+import { FloatingHelpButton } from "@/components/FloatingHelpButton";
 
 function AppSidebar() {
   const [location] = useLocation();
@@ -218,11 +219,14 @@ function Router() {
 }
 
 export default function App() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Router />
         <Toaster />
+        {isAuthenticated && <FloatingHelpButton />}
       </TooltipProvider>
     </QueryClientProvider>
   );

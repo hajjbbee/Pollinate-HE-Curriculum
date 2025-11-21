@@ -1094,6 +1094,68 @@ router.patch("/api/emerging-interests/:signalId", isAuthenticated, async (req: R
   }
 });
 
+// Support Tickets
+router.post("/api/support", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const family = await storage.getFamily(req.user.id);
+    if (!family) {
+      return res.status(404).json({ error: "Family not found" });
+    }
+
+    const { message, screenshotUrl } = req.body;
+
+    if (!message || message.trim().length === 0) {
+      return res.status(400).json({ error: "Message is required" });
+    }
+
+    const ticket = await storage.createSupportTicket({
+      familyId: family.id,
+      userEmail: req.user.email || "unknown@pollinate.app",
+      userName: `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() || "Pollinate User",
+      message: message.trim(),
+      screenshotUrl: screenshotUrl || null,
+      status: "new",
+    });
+
+    // Send email notification using basic fetch to a simple email service
+    // For now, we'll use a simple fetch to send the email
+    try {
+      const supportEmail = "pollinatecurriculum@proton.me";
+      const subject = `[Pollinate Support] New message from ${ticket.userName}`;
+      const emailBody = `
+New support message from ${ticket.userName} (${ticket.userEmail})
+Family: ${family.familyName}
+
+Message:
+${ticket.message}
+
+${screenshotUrl ? `Screenshot: ${screenshotUrl}` : "No screenshot attached"}
+
+---
+Ticket ID: ${ticket.id}
+Created: ${ticket.createdAt}
+      `.trim();
+
+      // Simple email sending via fetch (we'll use a basic SMTP or email API later)
+      // For now, just log it - the user can add Resend/SendGrid integration later
+      console.log(`[SUPPORT TICKET] ${subject}\n${emailBody}`);
+      console.log(`[ACTION REQUIRED] Send this to: ${supportEmail}`);
+      
+    } catch (emailError) {
+      console.error("Failed to send support email:", emailError);
+      // Don't fail the request if email fails - ticket is still saved
+    }
+
+    res.json(ticket);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Streak tracking
 router.post("/api/daily-completion", isAuthenticated, async (req: Request, res: Response) => {
   try {

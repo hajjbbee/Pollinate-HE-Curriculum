@@ -19,6 +19,8 @@ import type {
   ActivityFeedback,
   InsertEmergingInterestSignal,
   EmergingInterestSignal,
+  InsertSupportTicket,
+  SupportTicket,
   User,
   UpsertUser,
 } from "@shared/schema";
@@ -101,6 +103,11 @@ export interface IStorage {
   getRecentEmergingInterests(childId: string, days?: number): Promise<EmergingInterestSignal[]>;
   updateEmergingInterest(signalId: string, updates: Partial<InsertEmergingInterestSignal>): Promise<EmergingInterestSignal>;
   deleteEmergingInterest(signalId: string): Promise<void>;
+
+  // Support Tickets
+  createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket>;
+  getSupportTickets(familyId: string): Promise<SupportTicket[]>;
+  updateSupportTicket(ticketId: string, updates: Partial<InsertSupportTicket>): Promise<SupportTicket>;
 }
 
 import { db } from "./db";
@@ -117,6 +124,7 @@ import {
   dailyCompletions,
   activityFeedback,
   emergingInterestSignals,
+  supportTickets,
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql as sqlOp } from "drizzle-orm";
 
@@ -711,6 +719,29 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEmergingInterest(signalId: string): Promise<void> {
     await db.delete(emergingInterestSignals).where(eq(emergingInterestSignals.id, signalId));
+  }
+
+  // Support Tickets
+  async createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket> {
+    const [result] = await db.insert(supportTickets).values(ticket).returning();
+    return result;
+  }
+
+  async getSupportTickets(familyId: string): Promise<SupportTicket[]> {
+    return await db
+      .select()
+      .from(supportTickets)
+      .where(eq(supportTickets.familyId, familyId))
+      .orderBy(desc(supportTickets.createdAt));
+  }
+
+  async updateSupportTicket(ticketId: string, updates: Partial<InsertSupportTicket>): Promise<SupportTicket> {
+    const [result] = await db
+      .update(supportTickets)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(supportTickets.id, ticketId))
+      .returning();
+    return result;
   }
 }
 

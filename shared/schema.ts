@@ -209,6 +209,19 @@ export const upcomingEvents = pgTable("upcoming_events", {
   cachedAt: timestamp("cached_at").defaultNow(),
 });
 
+// Support tickets table
+export const supportTickets = pgTable("support_tickets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  familyId: varchar("family_id").notNull().references(() => families.id, { onDelete: "cascade" }),
+  userEmail: varchar("user_email").notNull(),
+  userName: varchar("user_name").notNull(),
+  message: text("message").notNull(),
+  screenshotUrl: text("screenshot_url"),
+  status: varchar("status").notNull().default("new"), // new, replied, resolved
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one }) => ({
   family: one(families, {
@@ -228,6 +241,7 @@ export const familiesRelations = relations(families, ({ one, many }) => ({
   localOpportunities: many(localOpportunities),
   upcomingEvents: many(upcomingEvents),
   homeschoolGroups: many(homeschoolGroups),
+  supportTickets: many(supportTickets),
   subscription: one(subscriptions, {
     fields: [families.id],
     references: [subscriptions.familyId],
@@ -284,6 +298,13 @@ export const upcomingEventsRelations = relations(upcomingEvents, ({ one }) => ({
 export const homeschoolGroupsRelations = relations(homeschoolGroups, ({ one }) => ({
   family: one(families, {
     fields: [homeschoolGroups.familyId],
+    references: [families.id],
+  }),
+}));
+
+export const supportTicketsRelations = relations(supportTickets, ({ one }) => ({
+  family: one(families, {
+    fields: [supportTickets.familyId],
     references: [families.id],
   }),
 }));
@@ -346,6 +367,12 @@ export const insertHomeschoolGroupSchema = createInsertSchema(homeschoolGroups).
   updatedAt: true,
 });
 
+export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -379,6 +406,9 @@ export type UpcomingEvent = typeof upcomingEvents.$inferSelect;
 
 export type InsertHomeschoolGroup = z.infer<typeof insertHomeschoolGroupSchema>;
 export type HomeschoolGroup = typeof homeschoolGroups.$inferSelect;
+
+export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
+export type SupportTicket = typeof supportTickets.$inferSelect;
 
 // Curriculum JSON structure types
 export interface WeekActivity {
