@@ -3094,6 +3094,19 @@ router.post("/api/billing/webhook", async (req: Request, res: Response) => {
     return res.status(400).send("Webhook signature missing");
   }
 
+  // Helper function to map price IDs to plan names
+  // Throws error for unknown price IDs to prevent silent misclassification
+  const getPlanFromPriceId = (priceId: string): string => {
+    if (priceId === STRIPE_PRICE_IDS.coop) return "coop";
+    if (priceId === STRIPE_PRICE_IDS.highschool) return "highschool";
+    if (priceId === STRIPE_PRICE_IDS.familypro) return "familypro";
+    if (priceId === STRIPE_PRICE_IDS.starter) return "starter";
+    
+    // Unknown price ID - log and throw error instead of defaulting
+    console.error(`Unknown Stripe price ID in webhook: ${priceId}`);
+    throw new Error(`Invalid price ID: ${priceId}. Please update STRIPE_PRICE_IDS in server/stripe.ts`);
+  };
+
   try {
     // Use raw body for signature verification (set up in server/index.ts)
     const rawBody = (req as any).rawBody;
@@ -3117,7 +3130,7 @@ router.post("/api/billing/webhook", async (req: Request, res: Response) => {
           const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
           const priceId = stripeSubscription.items.data[0].price.id;
           
-          const plan = priceId === STRIPE_PRICE_IDS.pro ? "pro" : "basic";
+          const plan = getPlanFromPriceId(priceId);
 
           await storage.upsertSubscription({
             familyId,
@@ -3144,7 +3157,7 @@ router.post("/api/billing/webhook", async (req: Request, res: Response) => {
 
         if (existingSubscription && subscription.items?.data?.length > 0) {
           const priceId = subscription.items.data[0].price.id;
-          const plan = priceId === STRIPE_PRICE_IDS.pro ? "pro" : "basic";
+          const plan = getPlanFromPriceId(priceId);
 
           const updates: any = {
             status: subscription.status,

@@ -9,15 +9,18 @@ import { apiRequest } from "@/lib/queryClient";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 
+// IMPORTANT: Create these prices in Stripe Dashboard (Test Mode) and update IDs below
 // Beta Launch Price IDs (TEST MODE) - must match server/stripe.ts
+// Format: Create recurring prices at $29, $59, $99, $199/month in Stripe Dashboard
 const STRIPE_PRICE_IDS = {
-  starter: "price_BETA_STARTER_29",
-  familypro: "price_BETA_FAMILYPRO_59",
-  highschool: "price_BETA_HIGHSCHOOL_99",
-  coop: "price_BETA_COOP_199",
+  starter: "price_BETA_STARTER_29",        // TODO: Replace with actual Stripe test mode price ID
+  familypro: "price_BETA_FAMILYPRO_59",    // TODO: Replace with actual Stripe test mode price ID
+  highschool: "price_BETA_HIGHSCHOOL_99",  // TODO: Replace with actual Stripe test mode price ID
+  coop: "price_BETA_COOP_199",             // TODO: Replace with actual Stripe test mode price ID
 } as const;
 
-// Beta spot limits and taken counts (simulated - in production, fetch from backend)
+// Beta spot limits - ILLUSTRATIVE ONLY (not connected to real subscription counts)
+// In production, fetch actual subscription counts from backend API
 const BETA_SPOTS = {
   starter: { limit: 200, taken: 17 },
   familypro: { limit: 150, taken: 12 },
@@ -76,10 +79,10 @@ export default function Pricing() {
           <AlertCircle className="h-5 w-5 text-primary" />
           <AlertDescription className="flex items-center justify-between flex-wrap gap-2">
             <span className="font-semibold text-base">
-              🚀 Limited Beta Launch – Prices Increase Next Week!
+              Limited Beta Launch - Prices Increase Next Week!
             </span>
             <Badge variant="secondary" className="text-sm" data-testid="badge-spots-remaining">
-              {totalSpotsLeft} spots remaining
+              {totalSpotsLeft} illustrative spots remaining
             </Badge>
           </AlertDescription>
         </Alert>
@@ -335,10 +338,10 @@ export default function Pricing() {
 
         <div className="mt-12 text-center">
           <p className="text-sm text-muted-foreground mb-2">
-            🔒 Lock in lifetime beta pricing today. Rates increase next week!
+            Lock in lifetime beta pricing today. Rates increase next week!
           </p>
           <p className="text-xs text-muted-foreground">
-            All plans in Stripe Test Mode. 7-day free trial. Cancel anytime.
+            Stripe Test Mode. 7-day free trial. Cancel anytime. Spot counts are illustrative.
           </p>
           <Button
             variant="ghost"
