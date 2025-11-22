@@ -23,7 +23,13 @@ import { PrivacyBanner } from "@/components/PrivacyBanner";
 
 const step1Schema = z.object({
   familyName: z.string().min(1, "Family name is required"),
-  country: z.enum(["US", "AU", "NZ"], {
+  country: z.enum([
+    "US", "CA", "GB", "AU", "NZ", "IE", 
+    "DE", "FR", "ES", "IT", "NL", "BE", "AT", "CH",
+    "DK", "SE", "NO", "FI", "PL", "CZ",
+    "ZA", "IN", "SG", "JP", "KR",
+    "MX", "BR", "AR", "OTHER"
+  ], {
     required_error: "Please select your country",
   }),
 });
@@ -339,8 +345,34 @@ export default function Onboarding() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="US">🇺🇸 United States</SelectItem>
+                            <SelectItem value="CA">🇨🇦 Canada</SelectItem>
+                            <SelectItem value="GB">🇬🇧 United Kingdom</SelectItem>
                             <SelectItem value="AU">🇦🇺 Australia</SelectItem>
                             <SelectItem value="NZ">🇳🇿 New Zealand</SelectItem>
+                            <SelectItem value="IE">🇮🇪 Ireland</SelectItem>
+                            <SelectItem value="DE">🇩🇪 Germany</SelectItem>
+                            <SelectItem value="FR">🇫🇷 France</SelectItem>
+                            <SelectItem value="ES">🇪🇸 Spain</SelectItem>
+                            <SelectItem value="IT">🇮🇹 Italy</SelectItem>
+                            <SelectItem value="NL">🇳🇱 Netherlands</SelectItem>
+                            <SelectItem value="BE">🇧🇪 Belgium</SelectItem>
+                            <SelectItem value="AT">🇦🇹 Austria</SelectItem>
+                            <SelectItem value="CH">🇨🇭 Switzerland</SelectItem>
+                            <SelectItem value="DK">🇩🇰 Denmark</SelectItem>
+                            <SelectItem value="SE">🇸🇪 Sweden</SelectItem>
+                            <SelectItem value="NO">🇳🇴 Norway</SelectItem>
+                            <SelectItem value="FI">🇫🇮 Finland</SelectItem>
+                            <SelectItem value="PL">🇵🇱 Poland</SelectItem>
+                            <SelectItem value="CZ">🇨🇿 Czech Republic</SelectItem>
+                            <SelectItem value="ZA">🇿🇦 South Africa</SelectItem>
+                            <SelectItem value="IN">🇮🇳 India</SelectItem>
+                            <SelectItem value="SG">🇸🇬 Singapore</SelectItem>
+                            <SelectItem value="JP">🇯🇵 Japan</SelectItem>
+                            <SelectItem value="KR">🇰🇷 South Korea</SelectItem>
+                            <SelectItem value="MX">🇲🇽 Mexico</SelectItem>
+                            <SelectItem value="BR">🇧🇷 Brazil</SelectItem>
+                            <SelectItem value="AR">🇦🇷 Argentina</SelectItem>
+                            <SelectItem value="OTHER">🌍 Other</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
