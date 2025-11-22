@@ -749,7 +749,6 @@ export default function FamilySettings() {
                             render={({ field }) => (
                               <FormItem className="flex flex-row items-center justify-between">
                                 <div className="space-y-0.5">
-                                  <FormLabel className="text-base">Gifted</FormLabel>
                                   <FormDescription>Interest-based intensity, advanced concepts, depth over breadth</FormDescription>
                                 </div>
                                 <FormControl>
@@ -764,8 +763,7 @@ export default function FamilySettings() {
                             render={({ field }) => (
                               <FormItem className="flex flex-row items-center justify-between">
                                 <div className="space-y-0.5">
-                                  <FormLabel className="text-base">Twice Exceptional (2e)</FormLabel>
-                                  <FormDescription>Gifted + learning difference - balances challenge with support</FormDescription>
+                                  <FormDescription>Balances challenge with support for advanced learners with learning differences</FormDescription>
                                 </div>
                                 <FormControl>
                                   <Switch checked={field.value} onCheckedChange={field.onChange} data-testid={`switch-2e-${index}`} />
@@ -775,7 +773,7 @@ export default function FamilySettings() {
                           />
                         </div>
 
-                        {/* Dyslexia / Reading Differences */}
+                        {/* Dyslexia */}
                         <div className="space-y-3 p-3 border rounded-lg">
                           <FormField
                             control={form.control}
@@ -783,7 +781,7 @@ export default function FamilySettings() {
                             render={({ field }) => (
                               <FormItem className="flex flex-row items-center justify-between">
                                 <div className="space-y-0.5">
-                                  <FormLabel className="text-base">Dyslexia / Reading Differences</FormLabel>
+                                  <FormLabel className="text-base">Dyslexia</FormLabel>
                                   <FormDescription>Oral options, audiobooks, reduced written work</FormDescription>
                                 </div>
                                 <FormControl>
@@ -816,7 +814,7 @@ export default function FamilySettings() {
                           )}
                         </div>
 
-                        {/* Dysgraphia / Writing Differences */}
+                        {/* Dysgraphia */}
                         <div className="space-y-3 p-3 border rounded-lg">
                           <FormField
                             control={form.control}
@@ -824,7 +822,7 @@ export default function FamilySettings() {
                             render={({ field }) => (
                               <FormItem className="flex flex-row items-center justify-between">
                                 <div className="space-y-0.5">
-                                  <FormLabel className="text-base">Dysgraphia / Writing Differences</FormLabel>
+                                  <FormLabel className="text-base">Dysgraphia</FormLabel>
                                   <FormDescription>Typing options, reduced writing, alternative outputs</FormDescription>
                                 </div>
                                 <FormControl>
@@ -857,7 +855,7 @@ export default function FamilySettings() {
                           )}
                         </div>
 
-                        {/* Dyscalculia / Maths Differences */}
+                        {/* Dyscalculia */}
                         <div className="space-y-3 p-3 border rounded-lg">
                           <FormField
                             control={form.control}
@@ -865,7 +863,7 @@ export default function FamilySettings() {
                             render={({ field }) => (
                               <FormItem className="flex flex-row items-center justify-between">
                                 <div className="space-y-0.5">
-                                  <FormLabel className="text-base">Dyscalculia / Maths Differences</FormLabel>
+                                  <FormLabel className="text-base">Dyscalculia</FormLabel>
                                   <FormDescription>Manipulatives, visual maths, extra time, calculators</FormDescription>
                                 </div>
                                 <FormControl>
