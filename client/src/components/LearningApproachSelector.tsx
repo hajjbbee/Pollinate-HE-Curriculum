@@ -110,27 +110,48 @@ const approaches: ApproachInfo[] = [
 ];
 
 interface LearningApproachSelectorProps {
-  value?: LearningApproach;
-  onChange: (approach: LearningApproach) => void;
+  value?: LearningApproach | LearningApproach[];
+  onChange: (approach: LearningApproach | LearningApproach[]) => void;
   hideTitle?: boolean;
+  multiSelect?: boolean;
 }
 
-export function LearningApproachSelector({ value, onChange, hideTitle }: LearningApproachSelectorProps) {
-  const [selected, setSelected] = useState<LearningApproach | undefined>(value);
+export function LearningApproachSelector({ value, onChange, hideTitle, multiSelect = false }: LearningApproachSelectorProps) {
+  const [selected, setSelected] = useState<LearningApproach | LearningApproach[] | undefined>(value);
 
   const handleSelect = (approach: LearningApproach) => {
-    setSelected(approach);
-    onChange(approach);
+    if (multiSelect) {
+      const currentSelection = Array.isArray(selected) ? selected : [];
+      const newSelection = currentSelection.includes(approach)
+        ? currentSelection.filter(a => a !== approach)
+        : [...currentSelection, approach];
+      setSelected(newSelection);
+      onChange(newSelection);
+    } else {
+      setSelected(approach);
+      onChange(approach);
+    }
+  };
+
+  const isApproachSelected = (approachId: LearningApproach): boolean => {
+    if (multiSelect) {
+      return Array.isArray(selected) && selected.includes(approachId);
+    }
+    return selected === approachId;
   };
 
   return (
     <div className="space-y-6">
       {!hideTitle && (
         <div className="text-center space-y-2">
-          <h3 className="text-2xl font-heading font-bold">Choose Your Learning Approach</h3>
+          <h3 className="text-2xl font-heading font-bold">
+            {multiSelect ? "Choose Your Learning Approaches" : "Choose Your Learning Approach"}
+          </h3>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Select the educational philosophy that resonates with your family. 
-            Our AI will adapt the curriculum to match your chosen approach.
+            {multiSelect 
+              ? "Select one or more educational philosophies to blend. Our AI will seamlessly combine your chosen approaches."
+              : "Select the educational philosophy that resonates with your family. Our AI will adapt the curriculum to match your chosen approach."
+            }
           </p>
         </div>
       )}
@@ -138,7 +159,7 @@ export function LearningApproachSelector({ value, onChange, hideTitle }: Learnin
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
         {approaches.map((approach) => {
           const Icon = approach.icon;
-          const isSelected = selected === approach.id;
+          const isSelected = isApproachSelected(approach.id);
           const isPerfectBlend = approach.id === "perfect-blend";
 
           return (
