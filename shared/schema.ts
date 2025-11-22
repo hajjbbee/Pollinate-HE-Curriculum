@@ -74,6 +74,20 @@ export const learningApproaches = [
 
 export type LearningApproach = typeof learningApproaches[number];
 
+// Education standards for High School Mode international support
+export const educationStandards = [
+  "us",
+  "canada",
+  "uk",
+  "australia-nz",
+  "ib",
+  "eu",
+  "classical",
+  "custom"
+] as const;
+
+export type EducationStandard = typeof educationStandards[number];
+
 // Family learning approach preferences
 export const familyApproaches = pgTable("family_approaches", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -480,6 +494,8 @@ export const insertChildSchema = createInsertSchema(children).omit({
   createdAt: true,
   updatedAt: true,
   sensoryProfile: true, // Deprecated field - no longer collected via UI
+}).extend({
+  educationStandard: z.enum(educationStandards).optional().default("us"),
 });
 
 export const insertTranscriptCourseSchema = createInsertSchema(transcriptCourses).omit({
