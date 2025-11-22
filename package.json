@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
-  "vercel": {
-    "framework": "vite"
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "scripts": {
     "dev": "vite",
