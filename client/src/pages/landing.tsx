@@ -27,7 +27,7 @@ export default function Landing() {
               Living, Interest-Led Homeschool<br />Curriculum for Your Family
             </h2>
             <p className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
-              AI-powered 12-week rolling curricula tailored to each child's interests, mastery levels, and local educational opportunities. Supporting families in the US, Australia, and New Zealand.
+              AI-powered 12-week rolling curricula tailored to each child's interests, mastery levels, and local educational opportunities. Supporting homeschool families globally.
             </p>
             <Button asChild size="lg" className="text-lg px-8" data-testid="button-get-started">
               <a href="/api/login">Get Started Free</a>
@@ -173,7 +173,7 @@ export default function Landing() {
 
       <footer className="border-t border-border py-12 bg-card/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-muted-foreground">
-          <p>© 2025 Pollinate. Supporting homeschool families in the US, Australia, and New Zealand.</p>
+          <p>© 2025 Pollinate. Supporting homeschool families globally.</p>
         </div>
       </footer>
     </div>
