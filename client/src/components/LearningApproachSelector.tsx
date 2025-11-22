@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -118,6 +118,10 @@ interface LearningApproachSelectorProps {
 
 export function LearningApproachSelector({ value, onChange, hideTitle, multiSelect = false }: LearningApproachSelectorProps) {
   const [selected, setSelected] = useState<LearningApproach | LearningApproach[] | undefined>(value);
+
+  useEffect(() => {
+    setSelected(value);
+  }, [value]);
 
   const handleSelect = (approach: LearningApproach) => {
     if (multiSelect) {
