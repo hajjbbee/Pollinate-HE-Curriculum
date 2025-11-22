@@ -24,16 +24,11 @@ import { PlacesAutocomplete } from "@/components/PlacesAutocomplete";
 import { LearningApproachSelector, type LearningApproach } from "@/components/LearningApproachSelector";
 import { useLocation } from "wouter";
 import { STANDARDS_CONFIG, type EducationStandard } from "@shared/standardsConfig";
+import { getCountryList, getCountryByCode, detectCountry } from "@/lib/countries";
 
 const familySettingsSchema = z.object({
   familyName: z.string().min(1, "Family name is required"),
-  country: z.enum([
-    "US", "CA", "GB", "AU", "NZ", "IE", 
-    "DE", "FR", "ES", "IT", "NL", "BE", "AT", "CH",
-    "DK", "SE", "NO", "FI", "PL", "CZ",
-    "ZA", "IN", "SG", "JP", "KR",
-    "MX", "BR", "AR", "OTHER"
-  ]),
+  country: z.string().min(2, "Please select your country"),
   address: z.string().min(5, "Please enter a valid address"),
   lat: z.number().optional(),
   lng: z.number().optional(),
@@ -441,36 +436,17 @@ export default function FamilySettings() {
                           <SelectValue placeholder="Select your country" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="US">🇺🇸 United States</SelectItem>
-                        <SelectItem value="CA">🇨🇦 Canada</SelectItem>
-                        <SelectItem value="GB">🇬🇧 United Kingdom</SelectItem>
-                        <SelectItem value="AU">🇦🇺 Australia</SelectItem>
-                        <SelectItem value="NZ">🇳🇿 New Zealand</SelectItem>
-                        <SelectItem value="IE">🇮🇪 Ireland</SelectItem>
-                        <SelectItem value="DE">🇩🇪 Germany</SelectItem>
-                        <SelectItem value="FR">🇫🇷 France</SelectItem>
-                        <SelectItem value="ES">🇪🇸 Spain</SelectItem>
-                        <SelectItem value="IT">🇮🇹 Italy</SelectItem>
-                        <SelectItem value="NL">🇳🇱 Netherlands</SelectItem>
-                        <SelectItem value="BE">🇧🇪 Belgium</SelectItem>
-                        <SelectItem value="AT">🇦🇹 Austria</SelectItem>
-                        <SelectItem value="CH">🇨🇭 Switzerland</SelectItem>
-                        <SelectItem value="DK">🇩🇰 Denmark</SelectItem>
-                        <SelectItem value="SE">🇸🇪 Sweden</SelectItem>
-                        <SelectItem value="NO">🇳🇴 Norway</SelectItem>
-                        <SelectItem value="FI">🇫🇮 Finland</SelectItem>
-                        <SelectItem value="PL">🇵🇱 Poland</SelectItem>
-                        <SelectItem value="CZ">🇨🇿 Czech Republic</SelectItem>
-                        <SelectItem value="ZA">🇿🇦 South Africa</SelectItem>
-                        <SelectItem value="IN">🇮🇳 India</SelectItem>
-                        <SelectItem value="SG">🇸🇬 Singapore</SelectItem>
-                        <SelectItem value="JP">🇯🇵 Japan</SelectItem>
-                        <SelectItem value="KR">🇰🇷 South Korea</SelectItem>
-                        <SelectItem value="MX">🇲🇽 Mexico</SelectItem>
-                        <SelectItem value="BR">🇧🇷 Brazil</SelectItem>
-                        <SelectItem value="AR">🇦🇷 Argentina</SelectItem>
-                        <SelectItem value="OTHER">🌍 Other</SelectItem>
+                      <SelectContent className="max-h-[300px]">
+                        {getCountryList().map((item, index) => {
+                          if ('separator' in item) {
+                            return <div key={`separator-${index}`} className="h-px bg-border my-1" />;
+                          }
+                          return (
+                            <SelectItem key={item.code} value={item.code}>
+                              {item.flag} {item.name}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                     <FormMessage />
