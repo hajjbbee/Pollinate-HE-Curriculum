@@ -110,8 +110,20 @@ export default function TranscriptPage() {
       const response = await fetch(`/api/transcript/download/${selectedChildId}`);
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to download transcript");
+        const errorData = await response.json();
+        
+        // Handle validation errors with detailed feedback
+        if (errorData.details && Array.isArray(errorData.details)) {
+          const errorMessages = errorData.details.join('\n');
+          toast({
+            title: "Transcript Incomplete",
+            description: errorMessages,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        throw new Error(errorData.error || "Failed to download transcript");
       }
       
       // Create blob and download

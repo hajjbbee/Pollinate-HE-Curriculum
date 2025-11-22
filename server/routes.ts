@@ -1472,7 +1472,61 @@ router.get("/api/transcript/download/:childId", isAuthenticated, async (req: Req
     const courses = await storage.getTranscriptCourses(childId);
     
     if (courses.length === 0) {
-      return res.status(404).json({ error: "No courses found for this student" });
+      return res.status(404).json({ error: "No courses found for this student. Complete activities in your weekly plans to start building credits." });
+    }
+
+    // Validate required data based on education standard
+    const standard = child.educationStandard || 'us';
+    const validationErrors = [];
+
+    // Critical validation that blocks download
+    if (!child.birthdate) {
+      validationErrors.push("Student birthdate is required for official transcripts. Please add this in Family Settings.");
+    }
+
+    if (!family.familyName) {
+      validationErrors.push("Family name is required. Please complete your family profile in Settings.");
+    }
+
+    // Block download if critical fields are missing
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ 
+        error: "Transcript cannot be generated", 
+        details: validationErrors 
+      });
+    }
+
+    // Standard-specific completeness checks - warn about missing metadata
+    const warnings = [];
+    if (standard === 'uk') {
+      const coursesWithGcse = courses.filter(c => c.gcseLevel);
+      const missingCount = courses.length - coursesWithGcse.length;
+      if (missingCount > 0) {
+        warnings.push(`${missingCount} course${missingCount > 1 ? 's' : ''} missing GCSE level information. UK universities expect this data.`);
+      }
+    } else if (standard === 'ib') {
+      const coursesWithGroups = courses.filter(c => c.ibGroup);
+      const missingCount = courses.length - coursesWithGroups.length;
+      if (missingCount > 0) {
+        warnings.push(`${missingCount} course${missingCount > 1 ? 's' : ''} missing IB subject group assignments. IB requires 6 subject groups.`);
+      }
+    } else if (standard === 'australia-nz') {
+      const coursesWithNcea = courses.filter(c => c.nceaStandardCode);
+      const missingCount = courses.length - coursesWithNcea.length;
+      if (missingCount > 0) {
+        warnings.push(`${missingCount} course${missingCount > 1 ? 's' : ''} missing NCEA standard codes. These are required for Australian/NZ universities.`);
+      }
+    } else if (standard === 'eu') {
+      const coursesWithEcts = courses.filter(c => c.ectsCredits);
+      const missingCount = courses.length - coursesWithEcts.length;
+      if (missingCount > 0) {
+        warnings.push(`${missingCount} course${missingCount > 1 ? 's' : ''} missing ECTS credit values. EU institutions require ECTS credits.`);
+      }
+    }
+
+    // Log warnings to console for debugging
+    if (warnings.length > 0) {
+      console.warn(`Transcript completeness warnings for ${child.name}:`, warnings);
     }
 
     // Create PDF
@@ -1492,8 +1546,7 @@ router.get("/api/transcript/download/:childId", isAuthenticated, async (req: Req
     // Prepare transcript data
     const transcriptData = { child, family, courses };
 
-    // Route to correct PDF generator based on education standard
-    const standard = child.educationStandard || 'us';
+    // Route to correct PDF generator based on education standard (standard already declared above for validation)
     switch (standard) {
       case 'uk':
         generateUKTranscript(doc, transcriptData);
