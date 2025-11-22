@@ -9,12 +9,15 @@ import { Progress } from "@/components/ui/progress";
 import { GraduationCap, Award, Download, Plus, Edit } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 import type { Child, TranscriptCourse } from "@shared/schema";
 
 export default function TranscriptPage() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const { toast } = useToast();
 
   const { data: childrenData, isLoading: childrenLoading } = useQuery({
     queryKey: ["/api/children"],
@@ -94,6 +97,44 @@ export default function TranscriptPage() {
     return courses.filter((course) => course.subject.toLowerCase() === selectedSubject.toLowerCase());
   }, [courses, selectedSubject]);
 
+  const handleDownloadTranscript = async () => {
+    if (!selectedChildId) return;
+    
+    setIsDownloading(true);
+    try {
+      const response = await fetch(`/api/transcript/download/${selectedChildId}`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to download transcript");
+      }
+      
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Official-Transcript-${selectedChild?.name.replace(/[^a-z0-9]/gi, '_')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Transcript Downloaded",
+        description: "Your official transcript PDF is ready to print or submit to universities.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Download Failed",
+        description: error.message || "Unable to generate transcript PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
@@ -104,9 +145,13 @@ export default function TranscriptPage() {
             Track academic credits and generate official transcripts
           </p>
         </div>
-        <Button data-testid="button-download-transcript">
+        <Button 
+          onClick={handleDownloadTranscript} 
+          disabled={isDownloading || !selectedChildId || courses.length === 0}
+          data-testid="button-download-transcript"
+        >
           <Download className="w-4 h-4 mr-2" />
-          Download Transcript PDF
+          {isDownloading ? "Generating..." : "Download Transcript PDF"}
         </Button>
       </div>
 
