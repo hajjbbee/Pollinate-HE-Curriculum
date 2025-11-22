@@ -10,6 +10,7 @@ import { CollaborationService } from "./websocket";
 import PDFDocument from "pdfkit";
 import { addDays, parseISO, format as formatDate } from "date-fns";
 import { getStandardConfig, getProgressLabel } from "@shared/standardsConfig";
+import { generateUSTranscript, generateUKTranscript, generateIBTranscript, generateANZTranscript, generateEUTranscript, generateClassicalTranscript } from "./transcriptPdfGenerators";
 
 const router = Router();
 
@@ -905,6 +906,8 @@ router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Re
           hasAnxiety: z.boolean().optional(),
           anxietyIntensity: z.number().min(0).max(10).optional(),
           isPerfectionist: z.boolean().optional(),
+          isHighSchoolMode: z.boolean().optional(),
+          educationStandard: z.enum(["us", "canada", "uk", "australia-nz", "ib", "eu", "classical", "custom"]).optional(),
         })
       ).min(1),
     });
@@ -1472,22 +1475,6 @@ router.get("/api/transcript/download/:childId", isAuthenticated, async (req: Req
       return res.status(404).json({ error: "No courses found for this student" });
     }
 
-    // Get education standard configuration for format-aware PDF generation
-    const standardConfig = getStandardConfig(child.educationStandard);
-    const progressLabels = getProgressLabel(child.educationStandard);
-
-    // Calculate totals by subject and grade level
-    const creditsBySubject: Record<string, number> = {};
-    const creditsByGrade: Record<string, number> = {};
-    let totalCredits = 0;
-
-    courses.forEach(course => {
-      const credits = course.credits || 0;
-      creditsBySubject[course.subject] = (creditsBySubject[course.subject] || 0) + credits;
-      creditsByGrade[course.gradeLevel] = (creditsByGrade[course.gradeLevel] || 0) + credits;
-      totalCredits += credits;
-    });
-
     // Create PDF
     const doc = new PDFDocument({ 
       size: 'LETTER',
@@ -1502,255 +1489,35 @@ router.get("/api/transcript/download/:childId", isAuthenticated, async (req: Req
     // Pipe PDF to response
     doc.pipe(res);
 
-    // === OFFICIAL TRANSCRIPT HEADER (format-aware) ===
-    const transcriptTitle = standardConfig.transcriptFormat === 'uk' ? 'ACADEMIC LEARNING RECORD' :
-                          standardConfig.transcriptFormat === 'ib' ? 'INTERNATIONAL BACCALAUREATE TRANSCRIPT' :
-                          standardConfig.transcriptFormat === 'anz' ? 'ACADEMIC ACHIEVEMENT RECORD' :
-                          standardConfig.transcriptFormat === 'eu' ? 'EDUCATIONAL PORTFOLIO RECORD' :
-                          standardConfig.transcriptFormat === 'narrative' ? 'CLASSICAL EDUCATION PORTFOLIO' :
-                          'OFFICIAL HIGH SCHOOL TRANSCRIPT';
-    
-    doc.fontSize(20)
-       .font('Helvetica-Bold')
-       .text(transcriptTitle, { align: 'center' });
-    
-    doc.moveDown(0.3);
-    
-    doc.fontSize(9)
-       .font('Helvetica-Oblique')
-       .text(`${standardConfig.flag} ${standardConfig.name} — ${standardConfig.shortName}`, { align: 'center' });
-    
-    doc.moveDown(0.3);
-    
-    doc.fontSize(10)
-       .font('Helvetica')
-       .text('This is to certify that this document is an accurate and complete transcript', { align: 'center' });
-    
-    doc.moveDown(2);
+    // Prepare transcript data
+    const transcriptData = { child, family, courses };
 
-    // === STUDENT INFORMATION SECTION ===
-    const leftCol = 72;
-    const rightCol = 350;
-    let yPos = doc.y;
-
-    doc.fontSize(12)
-       .font('Helvetica-Bold')
-       .text('STUDENT INFORMATION', leftCol, yPos);
-    
-    yPos += 25;
-
-    // Student details (left column)
-    doc.fontSize(10)
-       .font('Helvetica-Bold')
-       .text('Student Name:', leftCol, yPos);
-    doc.font('Helvetica')
-       .text(child.name, leftCol + 100, yPos);
-    
-    yPos += 20;
-
-    doc.font('Helvetica-Bold')
-       .text('Date of Birth:', leftCol, yPos);
-    doc.font('Helvetica')
-       .text(child.birthdate ? formatDate(new Date(child.birthdate), 'MMMM d, yyyy') : 'Not specified', leftCol + 100, yPos);
-
-    yPos += 20;
-
-    doc.font('Helvetica-Bold')
-       .text('School:', leftCol, yPos);
-    doc.font('Helvetica')
-       .text(`${family.familyName} Homeschool`, leftCol + 100, yPos);
-
-    yPos += 20;
-
-    doc.font('Helvetica-Bold')
-       .text('Address:', leftCol, yPos);
-    doc.font('Helvetica')
-       .text(family.address || 'Not specified', leftCol + 100, yPos, { width: 200 });
-
-    yPos += 40;
-
-    // Horizontal line separator
-    doc.moveTo(leftCol, yPos)
-       .lineTo(doc.page.width - 72, yPos)
-       .stroke();
-
-    yPos += 20;
-
-    // === ACADEMIC SUMMARY ===
-    doc.fontSize(12)
-       .font('Helvetica-Bold')
-       .text('ACADEMIC SUMMARY', leftCol, yPos);
-
-    yPos += 25;
-
-    doc.fontSize(10)
-       .font('Helvetica-Bold')
-       .text(`Total ${progressLabels.creditLabel}:`, leftCol, yPos);
-    doc.font('Helvetica')
-       .text(`${totalCredits.toFixed(2)} ${progressLabels.creditUnit}`, leftCol + 150, yPos);
-
-    yPos += 20;
-
-    doc.font('Helvetica-Bold')
-       .text('Diploma Status:', leftCol, yPos);
-    doc.font('Helvetica')
-       .text(totalCredits >= 24 ? 'Requirements Met' : 'In Progress', leftCol + 150, yPos);
-
-    yPos += 30;
-
-    // Credits by subject
-    doc.fontSize(9)
-       .font('Helvetica-Bold')
-       .text('Credits by Subject:', leftCol, yPos);
-    
-    yPos += 15;
-
-    Object.entries(creditsBySubject).forEach(([subject, credits]) => {
-      const subjectName = subject.charAt(0).toUpperCase() + subject.slice(1);
-      doc.fontSize(8)
-         .font('Helvetica')
-         .text(`${subjectName}: ${credits.toFixed(2)} credits`, leftCol + 20, yPos);
-      yPos += 12;
-    });
-
-    yPos += 20;
-
-    // Horizontal line separator
-    doc.moveTo(leftCol, yPos)
-       .lineTo(doc.page.width - 72, yPos)
-       .stroke();
-
-    yPos += 20;
-
-    // === COURSEWORK BY GRADE LEVEL ===
-    doc.fontSize(12)
-       .font('Helvetica-Bold')
-       .text('COURSEWORK', leftCol, yPos);
-
-    yPos += 25;
-
-    // Group courses by grade level
-    const coursesByGrade: Record<string, typeof courses> = {};
-    courses.forEach(course => {
-      if (!coursesByGrade[course.gradeLevel]) {
-        coursesByGrade[course.gradeLevel] = [];
-      }
-      coursesByGrade[course.gradeLevel].push(course);
-    });
-
-    // Sort grade levels
-    const sortedGrades = Object.keys(coursesByGrade).sort((a, b) => parseInt(a) - parseInt(b));
-
-    for (const gradeLevel of sortedGrades) {
-      const gradeCourses = coursesByGrade[gradeLevel];
-
-      // Check if we need a new page
-      if (yPos > 650) {
-        doc.addPage();
-        yPos = 72;
-      }
-
-      // Grade level header
-      doc.fontSize(11)
-         .font('Helvetica-Bold')
-         .text(`Grade ${gradeLevel}`, leftCol, yPos);
-      
-      yPos += 20;
-
-      // Table header
-      doc.fontSize(8)
-         .font('Helvetica-Bold')
-         .text('Course Title', leftCol, yPos);
-      doc.text('Credits', rightCol - 50, yPos);
-      doc.text('Grade', rightCol + 20, yPos);
-
-      yPos += 15;
-
-      // Light line under header
-      doc.moveTo(leftCol, yPos - 5)
-         .lineTo(doc.page.width - 72, yPos - 5)
-         .lineWidth(0.5)
-         .stroke();
-
-      // Course listings
-      gradeCourses.forEach(course => {
-        if (yPos > 700) {
-          doc.addPage();
-          yPos = 72;
-        }
-
-        doc.fontSize(9)
-           .font('Helvetica')
-           .text(course.courseTitle, leftCol, yPos, { width: 250 });
-        
-        const titleHeight = doc.heightOfString(course.courseTitle, { width: 250 });
-        
-        doc.text(course.credits?.toFixed(2) || '0.00', rightCol - 50, yPos);
-        doc.text(course.finalGrade || 'IP', rightCol + 20, yPos);
-
-        yPos += Math.max(titleHeight, 15) + 3;
-
-        // Course description (if present and not too long)
-        if (course.courseDescription && course.courseDescription.length < 200) {
-          doc.fontSize(7)
-             .font('Helvetica-Oblique')
-             .fillColor('#666666')
-             .text(course.courseDescription, leftCol + 10, yPos, { width: 440 });
-          
-          yPos += doc.heightOfString(course.courseDescription, { width: 440 }) + 5;
-          doc.fillColor('#000000');
-        }
-
-        yPos += 5;
-      });
-
-      // Grade level total
-      const gradeCredits = creditsByGrade[gradeLevel];
-      doc.fontSize(9)
-         .font('Helvetica-Bold')
-         .text(`Grade ${gradeLevel} Total Credits: ${gradeCredits.toFixed(2)}`, leftCol, yPos);
-
-      yPos += 30;
+    // Route to correct PDF generator based on education standard
+    const standard = child.educationStandard || 'us';
+    switch (standard) {
+      case 'uk':
+        generateUKTranscript(doc, transcriptData);
+        break;
+      case 'ib':
+        generateIBTranscript(doc, transcriptData);
+        break;
+      case 'australia-nz':
+        generateANZTranscript(doc, transcriptData);
+        break;
+      case 'eu':
+        generateEUTranscript(doc, transcriptData);
+        break;
+      case 'classical':
+        generateClassicalTranscript(doc, transcriptData);
+        break;
+      case 'us':
+      case 'canada':
+      case 'custom':
+      default:
+        // US/Canada/Custom use the same traditional transcript format
+        generateUSTranscript(doc, transcriptData);
+        break;
     }
-
-    // === FOOTER WITH CERTIFICATION ===
-    // Go to last page bottom
-    doc.y = doc.page.height - 180;
-    
-    doc.moveTo(leftCol, doc.y)
-       .lineTo(doc.page.width - 72, doc.y)
-       .stroke();
-
-    doc.moveDown(1);
-
-    doc.fontSize(8)
-       .font('Helvetica-Oblique')
-       .text('This transcript is an official document of home education coursework completed under the supervision of the parent/educator.', {
-         align: 'center',
-         width: doc.page.width - 144
-       });
-
-    doc.moveDown(1);
-
-    doc.fontSize(8)
-       .font('Helvetica')
-       .text(`Prepared by: ${family.familyName} Homeschool`, { align: 'center' });
-    
-    doc.moveDown(0.5);
-    
-    doc.text(`Date: ${formatDate(new Date(), 'MMMM d, yyyy')}`, { align: 'center' });
-
-    doc.moveDown(2);
-
-    // Signature line
-    doc.moveTo(leftCol + 100, doc.y)
-       .lineTo(leftCol + 300, doc.y)
-       .stroke();
-    
-    doc.moveDown(0.5);
-    
-    doc.fontSize(7)
-       .text('Parent/Educator Signature', leftCol + 100, doc.y);
 
     doc.end();
   } catch (error: any) {
