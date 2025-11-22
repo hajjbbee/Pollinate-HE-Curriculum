@@ -23,13 +23,12 @@ import type {
   SupportTicket,
   InsertFamilyApproach,
   FamilyApproach,
+  InsertChildApproach,
+  ChildApproach,
   InsertTranscriptCourse,
   TranscriptCourse,
   InsertCreditMapping,
   CreditMapping,
-  // Child approaches removed - future feature
-  // InsertChildApproach,
-  // ChildApproach,
   User,
   UpsertUser,
 } from "@shared/schema";
@@ -122,10 +121,9 @@ export interface IStorage {
   // Learning Approaches
   upsertFamilyApproach(approach: InsertFamilyApproach): Promise<FamilyApproach>;
   getFamilyApproach(familyId: string): Promise<FamilyApproach | null>;
-  // Child approaches removed - future feature
-  // upsertChildApproach(approach: InsertChildApproach): Promise<ChildApproach>;
-  // getChildApproach(childId: string): Promise<ChildApproach | null>;
-  // getChildApproaches(childIds: string[]): Promise<ChildApproach[]>;
+  upsertChildApproach(approach: InsertChildApproach): Promise<ChildApproach>;
+  getChildApproach(childId: string): Promise<ChildApproach | null>;
+  getChildApproaches(childIds: string[]): Promise<ChildApproach[]>;
 
   // High School Mode - Transcripts
   createTranscriptCourse(course: InsertTranscriptCourse): Promise<TranscriptCourse>;
@@ -833,43 +831,42 @@ export class DatabaseStorage implements IStorage {
     return result || null;
   }
 
-  // Child approaches implementation removed - future feature
-  // async upsertChildApproach(approach: InsertChildApproach): Promise<ChildApproach> {
-  //   const existing = await db
-  //     .select()
-  //     .from(childApproaches)
-  //     .where(eq(childApproaches.childId, approach.childId))
-  //     .limit(1);
-  //
-  //   if (existing.length > 0) {
-  //     const [result] = await db
-  //       .update(childApproaches)
-  //       .set({ ...approach, updatedAt: new Date() })
-  //       .where(eq(childApproaches.childId, approach.childId))
-  //       .returning();
-  //     return result;
-  //   } else {
-  //     const [result] = await db.insert(childApproaches).values(approach).returning();
-  //     return result;
-  //   }
-  // }
-  //
-  // async getChildApproach(childId: string): Promise<ChildApproach | null> {
-  //   const [result] = await db
-  //     .select()
-  //     .from(childApproaches)
-  //     .where(eq(childApproaches.childId, childId))
-  //     .limit(1);
-  //   return result || null;
-  // }
-  //
-  // async getChildApproaches(childIds: string[]): Promise<ChildApproach[]> {
-  //   if (childIds.length === 0) return [];
-  //   return await db
-  //     .select()
-  //     .from(childApproaches)
-  //     .where(inArray(childApproaches.childId, childIds));
-  // }
+  async upsertChildApproach(approach: InsertChildApproach): Promise<ChildApproach> {
+    const existing = await db
+      .select()
+      .from(childApproaches)
+      .where(eq(childApproaches.childId, approach.childId))
+      .limit(1);
+
+    if (existing.length > 0) {
+      const [result] = await db
+        .update(childApproaches)
+        .set({ ...approach, updatedAt: new Date() })
+        .where(eq(childApproaches.childId, approach.childId))
+        .returning();
+      return result;
+    } else {
+      const [result] = await db.insert(childApproaches).values(approach).returning();
+      return result;
+    }
+  }
+
+  async getChildApproach(childId: string): Promise<ChildApproach | null> {
+    const [result] = await db
+      .select()
+      .from(childApproaches)
+      .where(eq(childApproaches.childId, childId))
+      .limit(1);
+    return result || null;
+  }
+
+  async getChildApproaches(childIds: string[]): Promise<ChildApproach[]> {
+    if (childIds.length === 0) return [];
+    return await db
+      .select()
+      .from(childApproaches)
+      .where(inArray(childApproaches.childId, childIds));
+  }
 
   // Privacy & Data Management
   async getAllFamilyData(userId: string) {
