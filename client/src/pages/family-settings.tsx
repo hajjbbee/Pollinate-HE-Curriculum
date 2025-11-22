@@ -24,11 +24,14 @@ import { PlacesAutocomplete } from "@/components/PlacesAutocomplete";
 import { LearningApproachSelector, type LearningApproach } from "@/components/LearningApproachSelector";
 import { useLocation } from "wouter";
 import { STANDARDS_CONFIG, type EducationStandard } from "@shared/standardsConfig";
-import { getCountryList, getCountryByCode, detectCountry } from "@/lib/countries";
+import { getCountryList, getCountryByCode, detectCountry, VALID_COUNTRY_CODES } from "@/lib/countries";
 
 const familySettingsSchema = z.object({
   familyName: z.string().min(1, "Family name is required"),
-  country: z.string().min(2, "Please select your country"),
+  country: z.enum(VALID_COUNTRY_CODES, {
+    required_error: "Please select your country",
+    invalid_type_error: "Please select a valid country",
+  }),
   address: z.string().min(5, "Please enter a valid address"),
   lat: z.number().optional(),
   lng: z.number().optional(),

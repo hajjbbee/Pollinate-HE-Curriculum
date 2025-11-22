@@ -229,6 +229,11 @@ export const getCountryByCode = (code: string): Country | undefined => {
 
 // Auto-detect country based on browser locale
 export const detectCountry = (): string => {
+  // Guard for SSR/Node.js context
+  if (typeof navigator === 'undefined') {
+    return "AU"; // Fallback to Australia in non-browser contexts
+  }
+  
   try {
     // Try to get country from browser locale (e.g., "en-AU" -> "AU")
     const locale = navigator.language || (navigator as any).userLanguage;
@@ -248,3 +253,13 @@ export const detectCountry = (): string => {
   // Fallback to Australia
   return "AU";
 };
+
+// Get all valid country codes for validation
+export const VALID_COUNTRY_CODES = [
+  ...PRIORITY_COUNTRIES.map(c => c.code),
+  ...ALL_COUNTRIES.map(c => c.code),
+  "OTHER"
+] as const;
+
+// Type for valid country codes
+export type CountryCode = typeof VALID_COUNTRY_CODES[number];

@@ -20,11 +20,14 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { PlacesAutocomplete } from "@/components/PlacesAutocomplete";
 import { LearningApproachSelector, type LearningApproach } from "@/components/LearningApproachSelector";
 import { PrivacyBanner } from "@/components/PrivacyBanner";
-import { getCountryList, getCountryByCode, detectCountry } from "@/lib/countries";
+import { getCountryList, getCountryByCode, detectCountry, VALID_COUNTRY_CODES } from "@/lib/countries";
 
 const step1Schema = z.object({
   familyName: z.string().min(1, "Family name is required"),
-  country: z.string().min(2, "Please select your country"),
+  country: z.enum(VALID_COUNTRY_CODES, {
+    required_error: "Please select your country",
+    invalid_type_error: "Please select a valid country",
+  }),
 });
 
 const step2Schema = z.object({
