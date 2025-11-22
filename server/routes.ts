@@ -229,7 +229,7 @@ async function generateCurriculum(
   family: any,
   children: any[],
   localOpps: any[],
-  familyApproach?: string | null
+  familyApproaches?: string[] | null
 ): Promise<CurriculumData> {
   const today = new Date();
   const seasonMap: Record<string, string> = {
@@ -323,7 +323,15 @@ async function generateCurriculum(
     }
   };
 
-  const selectedApproach = approachMap[familyApproach || "perfect-blend"];
+  // Handle multiple learning approaches
+  const selectedApproaches = (familyApproaches && familyApproaches.length > 0) 
+    ? familyApproaches.map(approach => approachMap[approach] || approachMap["perfect-blend"])
+    : [approachMap["perfect-blend"]];
+
+  // Build approach description for the prompt
+  const approachDescription = selectedApproaches.length === 1
+    ? `${selectedApproaches[0].name}\n  → ${selectedApproaches[0].emphasis}`
+    : `Blended Approach (${selectedApproaches.map(a => a.name).join(", ")})\n  → Blend these approaches seamlessly:\n${selectedApproaches.map(a => `    • ${a.name}: ${a.emphasis}`).join("\n")}`;
 
   const opportunitiesInfo = localOpps.slice(0, 20).map(opp => ({
     name: opp.name,
@@ -380,8 +388,7 @@ FAMILY CONTEXT:
 - Season: ${season}
 - Travel Radius: ${family.travelRadiusMinutes} minutes
 - Flex for High Interest: ${family.flexForHighInterest ? "Yes" : "No"}
-- Learning Approach: ${selectedApproach.name}
-  → ${selectedApproach.emphasis}
+- Learning Approach: ${approachDescription}
 
 CHILDREN:
 ${childrenInfo.map(child => {
@@ -663,7 +670,7 @@ router.get("/api/auth/user", isAuthenticated, async (req: any, res: Response) =>
 // Onboarding endpoint
 router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Response) => {
   try {
-    const { familyName, country, address, travelRadiusMinutes, flexForHighInterest, learningApproach, children: childrenData } = req.body;
+    const { familyName, country, address, travelRadiusMinutes, flexForHighInterest, learningApproaches, usePerChildApproaches, children: childrenData } = req.body;
 
     if (!req.user?.id) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -693,12 +700,17 @@ router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Respon
       flexForHighInterest,
     });
 
-    // Save family learning approach if provided
-    if (learningApproach) {
-      await storage.saveFamilyApproach({
+    // Save family learning approaches if provided and not using per-child mode
+    if (learningApproaches && learningApproaches.length > 0 && !usePerChildApproaches) {
+      await storage.upsertFamilyApproach({
         familyId: family.id,
-        approach: learningApproach,
+        approaches: learningApproaches,
       });
+    }
+
+    // Update family with per-child approaches flag if provided
+    if (usePerChildApproaches !== undefined) {
+      await storage.updateFamily(family.id, { usePerChildApproaches });
     }
 
     // Create children
@@ -765,7 +777,7 @@ router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Respon
         throw new Error("No AI provider configured. Please set XAI_API_KEY or ANTHROPIC_API_KEY environment variable.");
       }
       
-      const curriculumData = await generateCurriculum(family, createdChildren, opportunities, learningApproach);
+      const curriculumData = await generateCurriculum(family, createdChildren, opportunities, learningApproaches);
 
       await storage.createCurriculum({
         familyId: family.id,
@@ -834,7 +846,7 @@ router.get("/api/family/approach", isAuthenticated, async (req: Request, res: Re
     }
 
     const approach = await storage.getFamilyApproach(family.id);
-    res.json(approach || { approach: "perfect-blend" });
+    res.json(approach || { approaches: ["perfect-blend"] });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -852,17 +864,17 @@ router.put("/api/family/approach", isAuthenticated, async (req: Request, res: Re
       return res.status(404).json({ error: "Family not found" });
     }
 
-    const { approach } = req.body;
-    if (!approach) {
-      return res.status(400).json({ error: "Approach is required" });
+    const { approaches } = req.body;
+    if (!approaches || !Array.isArray(approaches) || approaches.length === 0) {
+      return res.status(400).json({ error: "At least one approach is required" });
     }
 
-    await storage.saveFamilyApproach({
+    await storage.upsertFamilyApproach({
       familyId: family.id,
-      approach,
+      approaches,
     });
 
-    res.json({ success: true, approach });
+    res.json({ success: true, approaches });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -1621,7 +1633,7 @@ router.post("/api/curriculum/regenerate", isAuthenticated, async (req: Request, 
     const familyApproach = await storage.getFamilyApproach(family.id);
 
     // Generate new curriculum
-    const curriculumData = await generateCurriculum(family, children, opportunities, familyApproach?.approach);
+    const curriculumData = await generateCurriculum(family, children, opportunities, familyApproach?.approaches);
 
     // Deactivate old curricula
     await storage.deactivateAllCurricula(family.id);
