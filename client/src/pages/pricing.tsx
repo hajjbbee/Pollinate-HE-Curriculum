@@ -7,10 +7,12 @@ import { Check, Sparkles, Zap, GraduationCap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
+// NOTE: High School price ID must match server/stripe.ts
+// Create $199/month recurring price in Stripe Dashboard and update both files
 const STRIPE_PRICE_IDS = {
   basic: "price_1SV7cU7CoNMLNNsVdph4m8zi",
   pro: "price_1SV7cW7CoNMLNNsVvN4BWC47",
-  highschool: "price_PLACEHOLDER_HIGHSCHOOL",
+  highschool: "price_PLACEHOLDER_HIGHSCHOOL", // REQUIRED: Update after creating in Stripe
 } as const;
 
 export default function Pricing() {
