@@ -55,6 +55,7 @@ export const families = pgTable("families", {
   longitude: real("longitude").notNull(),
   travelRadiusMinutes: integer("travel_radius_minutes").notNull().default(30),
   flexForHighInterest: boolean("flex_for_high_interest").notNull().default(true),
+  usePerChildApproaches: boolean("use_per_child_approaches").notNull().default(false), // True if each child has their own approach selection
   lastEventsFetchedAt: timestamp("last_events_fetched_at"), // Global cache timestamp for API events
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -92,7 +93,7 @@ export type EducationStandard = typeof educationStandards[number];
 export const familyApproaches = pgTable("family_approaches", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   familyId: varchar("family_id").notNull().unique().references(() => families.id, { onDelete: "cascade" }),
-  approach: varchar("approach").notNull(), // Selected pedagogy: "perfect-blend", "charlotte-mason", "montessori", etc.
+  approaches: text("approaches").array().notNull().default(sql`ARRAY['perfect-blend']::text[]`), // Multiple selected pedagogies
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -133,14 +134,14 @@ export const children = pgTable("children", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Child-specific learning approach overrides (Future feature - not yet implemented)
-// export const childApproaches = pgTable("child_approaches", {
-//   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-//   childId: varchar("child_id").notNull().unique().references(() => children.id, { onDelete: "cascade" }),
-//   approach: varchar("approach").notNull(), // Per-child pedagogy override if different from family
-//   createdAt: timestamp("created_at").defaultNow(),
-//   updatedAt: timestamp("updated_at").defaultNow(),
-// });
+// Child-specific learning approach overrides
+export const childApproaches = pgTable("child_approaches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  childId: varchar("child_id").notNull().unique().references(() => children.id, { onDelete: "cascade" }),
+  approaches: text("approaches").array().notNull().default(sql`ARRAY[]::text[]`), // Per-child pedagogy override if different from family
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
 // High School Transcript Courses
 export const transcriptCourses = pgTable("transcript_courses", {
@@ -586,11 +587,11 @@ export const insertPortfolioEntrySchema = createInsertSchema(portfolioEntries).o
 });
 
 // Future feature - commented out until per-child overrides are implemented
-// export const insertChildApproachSchema = createInsertSchema(childApproaches).omit({
-//   id: true,
-//   createdAt: true,
-//   updatedAt: true,
-// });
+export const insertChildApproachSchema = createInsertSchema(childApproaches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -648,8 +649,8 @@ export type InsertPortfolioEntry = z.infer<typeof insertPortfolioEntrySchema>;
 export type PortfolioEntry = typeof portfolioEntries.$inferSelect;
 
 // Future feature types - commented out until per-child overrides are implemented
-// export type InsertChildApproach = z.infer<typeof insertChildApproachSchema>;
-// export type ChildApproach = typeof childApproaches.$inferSelect;
+export type InsertChildApproach = z.infer<typeof insertChildApproachSchema>;
+export type ChildApproach = typeof childApproaches.$inferSelect;
 
 // Zod schemas for AI curriculum response validation
 export const confidenceExampleSchema = z.object({
