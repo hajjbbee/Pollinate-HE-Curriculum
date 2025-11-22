@@ -9,6 +9,7 @@ import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { CollaborationService } from "./websocket";
 import PDFDocument from "pdfkit";
 import { addDays, parseISO, format as formatDate } from "date-fns";
+import { getStandardConfig, getProgressLabel } from "@shared/standardsConfig";
 
 const router = Router();
 
@@ -1471,6 +1472,10 @@ router.get("/api/transcript/download/:childId", isAuthenticated, async (req: Req
       return res.status(404).json({ error: "No courses found for this student" });
     }
 
+    // Get education standard configuration for format-aware PDF generation
+    const standardConfig = getStandardConfig(child.educationStandard);
+    const progressLabels = getProgressLabel(child.educationStandard);
+
     // Calculate totals by subject and grade level
     const creditsBySubject: Record<string, number> = {};
     const creditsByGrade: Record<string, number> = {};
@@ -1497,12 +1502,25 @@ router.get("/api/transcript/download/:childId", isAuthenticated, async (req: Req
     // Pipe PDF to response
     doc.pipe(res);
 
-    // === OFFICIAL TRANSCRIPT HEADER ===
+    // === OFFICIAL TRANSCRIPT HEADER (format-aware) ===
+    const transcriptTitle = standardConfig.transcriptFormat === 'uk' ? 'ACADEMIC LEARNING RECORD' :
+                          standardConfig.transcriptFormat === 'ib' ? 'INTERNATIONAL BACCALAUREATE TRANSCRIPT' :
+                          standardConfig.transcriptFormat === 'anz' ? 'ACADEMIC ACHIEVEMENT RECORD' :
+                          standardConfig.transcriptFormat === 'eu' ? 'EDUCATIONAL PORTFOLIO RECORD' :
+                          standardConfig.transcriptFormat === 'narrative' ? 'CLASSICAL EDUCATION PORTFOLIO' :
+                          'OFFICIAL HIGH SCHOOL TRANSCRIPT';
+    
     doc.fontSize(20)
        .font('Helvetica-Bold')
-       .text('OFFICIAL HIGH SCHOOL TRANSCRIPT', { align: 'center' });
+       .text(transcriptTitle, { align: 'center' });
     
-    doc.moveDown(0.5);
+    doc.moveDown(0.3);
+    
+    doc.fontSize(9)
+       .font('Helvetica-Oblique')
+       .text(`${standardConfig.flag} ${standardConfig.name} — ${standardConfig.shortName}`, { align: 'center' });
+    
+    doc.moveDown(0.3);
     
     doc.fontSize(10)
        .font('Helvetica')
@@ -1567,9 +1585,9 @@ router.get("/api/transcript/download/:childId", isAuthenticated, async (req: Req
 
     doc.fontSize(10)
        .font('Helvetica-Bold')
-       .text('Total Credits Earned:', leftCol, yPos);
+       .text(`Total ${progressLabels.creditLabel}:`, leftCol, yPos);
     doc.font('Helvetica')
-       .text(totalCredits.toFixed(2), leftCol + 150, yPos);
+       .text(`${totalCredits.toFixed(2)} ${progressLabels.creditUnit}`, leftCol + 150, yPos);
 
     yPos += 20;
 
