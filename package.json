@@ -1,15 +1,17 @@
 {
-  "name": "rest-express",
-  "version": "1.0.0",
-  "vercel": {
-    "framework": "vite"
-  },
-  "type": "module",
-  "license": "MIT",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "name": "rest-express",
+    "version": "1.0.0",
+    "type": "module",
+    "license": "MIT",
+    "vercel": {
+      "framework": "vite"
+    },
+    "scripts": {
+      "dev": "vite",
+      "build": "vite build",
+      "preview": "vite preview",
+      "check": "tsc",
+      "db:push": "drizzle-kit push"
   }
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",
