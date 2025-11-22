@@ -250,29 +250,49 @@ export default function TranscriptPage() {
             </CardContent>
           </Card>
         ) : (
-          filteredCourses.map((course: any) => (
-            <Card key={course.id} className="hover-elevate">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CardTitle className="text-lg">{course.courseTitle}</CardTitle>
-                      {course.isComplete && (
-                        <Badge variant="default" className="bg-green-600">
-                          Complete
-                        </Badge>
-                      )}
+          filteredCourses.map((course: any) => {
+            const standard = selectedChild?.educationStandard || 'us';
+            
+            // Build standard-specific metadata display
+            const standardMetadata = [];
+            if (standard === 'uk' && course.gcseLevel) {
+              standardMetadata.push(`${course.gcseLevel}`);
+            } else if (standard === 'ib' && course.ibGroup) {
+              standardMetadata.push(`${course.ibGroup}`);
+            } else if (standard === 'australia-nz' && course.nceaStandardCode) {
+              standardMetadata.push(`NCEA ${course.nceaStandardCode}`);
+            } else if (standard === 'eu' && course.ectsCredits) {
+              standardMetadata.push(`${course.ectsCredits} ECTS`);
+            }
+            
+            return (
+              <Card key={course.id} className="hover-elevate">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CardTitle className="text-lg">{course.courseTitle}</CardTitle>
+                        {course.isComplete && (
+                          <Badge variant="default" className="bg-green-600">
+                            Complete
+                          </Badge>
+                        )}
+                        {standardMetadata.length > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            {standardMetadata[0]}
+                          </Badge>
+                        )}
+                      </div>
+                      <CardDescription>
+                        Grade {course.gradeLevel} • {course.credits} {progressLabels.creditUnit}{course.credits !== 1 ? 's' : ''}
+                        {course.grade && ` • ${progressLabels.gradeTerminology}: ${course.grade}`}
+                      </CardDescription>
                     </div>
-                    <CardDescription>
-                      Grade {course.gradeLevel} • {course.credits} Credit{course.credits !== 1 ? 's' : ''}
-                      {course.grade && ` • Grade: ${course.grade}`}
-                    </CardDescription>
+                    <Button variant="ghost" size="icon" data-testid={`button-edit-course-${course.id}`}>
+                      <Edit className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="icon" data-testid={`button-edit-course-${course.id}`}>
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardHeader>
+                </CardHeader>
               {course.courseDescription && (
                 <CardContent>
                   <p className="text-sm text-muted-foreground">{course.courseDescription}</p>
@@ -286,7 +306,8 @@ export default function TranscriptPage() {
                 </CardContent>
               )}
             </Card>
-          ))
+            );
+          })
         )}
       </div>
     </div>
