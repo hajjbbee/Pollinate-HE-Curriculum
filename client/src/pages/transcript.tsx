@@ -11,6 +11,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import type { Child, TranscriptCourse } from "@shared/schema";
+import { getProgressLabel, getStandardConfig } from "@shared/standardsConfig";
 
 export default function TranscriptPage() {
   const { user } = useAuth();
@@ -86,6 +87,10 @@ export default function TranscriptPage() {
   const totalCredits = courses.reduce((sum, course) => sum + (course.credits || 0), 0);
   const completedCredits = courses.filter((course) => course.isComplete).reduce((sum, course) => sum + (course.credits || 0), 0);
   const progressPercent = totalCredits > 0 ? (completedCredits / totalCredits) * 100 : 0;
+  
+  // Get the correct terminology based on the child's education standard
+  const progressLabels = getProgressLabel(selectedChild?.educationStandard);
+  const standardConfig = getStandardConfig(selectedChild?.educationStandard);
 
   const subjects = ["All", "English", "Math", "Science", "History", "Elective"];
   const [selectedSubject, setSelectedSubject] = useState("All");
@@ -171,9 +176,14 @@ export default function TranscriptPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>{selectedChild?.name}'s Progress</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <span>{selectedChild?.name}'s Progress</span>
+                <Badge variant="outline" className="text-xs font-normal">
+                  {standardConfig.flag} {standardConfig.shortName}
+                </Badge>
+              </CardTitle>
               <CardDescription>
-                {completedCredits.toFixed(1)} of {totalCredits.toFixed(1)} credits completed
+                {completedCredits.toFixed(1)} of {totalCredits.toFixed(1)} {progressLabels.creditUnit} completed
               </CardDescription>
             </div>
             <div className="flex items-center gap-4">
@@ -188,8 +198,12 @@ export default function TranscriptPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <Progress value={progressPercent} className="h-3" />
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{progressLabels.creditLabel}</span>
+            <span>{progressLabels.gradeTerminology}</span>
+          </div>
         </CardContent>
       </Card>
 
