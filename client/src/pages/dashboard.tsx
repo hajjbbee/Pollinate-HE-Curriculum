@@ -107,6 +107,10 @@ export default function Dashboard() {
 
   const { mutate: regenerateWeek, isPending: isRegenerating } = useMutation({
     mutationFn: async (weekNumber: number) => {
+      toast({
+        title: "Regenerating Week",
+        description: "Generating your custom curriculum... (10–20s)",
+      });
       const response = await apiRequest("POST", "/api/curriculum/regenerate", { weekNumber });
       return await response.json();
     },
@@ -606,20 +610,27 @@ export default function Dashboard() {
                         </div>
 
                         {/* Regenerate Button */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            regenerateWeek(week.weekNumber);
-                          }}
-                          disabled={isRegenerating}
-                          className="ml-2 shrink-0"
-                          data-testid={`button-regenerate-${week.weekNumber}`}
-                        >
-                          <RefreshCw className={`w-4 h-4 ${isRegenerating ? "animate-spin" : ""}`} />
-                          <span className="hidden md:inline ml-2">Regenerate</span>
-                        </Button>
+                        <div className="flex flex-col items-end gap-1">
+                          {isRegenerating && (
+                            <p className="text-xs text-muted-foreground italic">
+                              Generating your custom curriculum... (10–20s)
+                            </p>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              regenerateWeek(week.weekNumber);
+                            }}
+                            disabled={isRegenerating}
+                            className="shrink-0"
+                            data-testid={`button-regenerate-${week.weekNumber}`}
+                          >
+                            <RefreshCw className={`w-4 h-4 ${isRegenerating ? "animate-spin" : ""}`} />
+                            <span className="hidden md:inline ml-2">Regenerate</span>
+                          </Button>
+                        </div>
                       </div>
                     </AccordionTrigger>
 

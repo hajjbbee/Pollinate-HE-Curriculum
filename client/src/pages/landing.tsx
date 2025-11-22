@@ -23,14 +23,14 @@ export default function Landing() {
 
       <section className="relative overflow-hidden bg-gradient-to-b from-primary/5 to-background py-20 sm:py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Alert className="max-w-3xl mx-auto mb-8 border-primary bg-primary/5" data-testid="alert-beta-launch">
-            <AlertCircle className="h-5 w-5 text-primary" />
-            <AlertDescription className="text-center">
-              <span className="font-semibold text-base">
+          <div className="max-w-3xl mx-auto mb-8 bg-gradient-to-r from-yellow-100 to-amber-50 border-2 border-yellow-600 rounded-lg p-4" data-testid="alert-beta-launch">
+            <div className="flex items-center justify-center gap-3">
+              <AlertCircle className="h-5 w-5 text-yellow-700 shrink-0" />
+              <p className="text-center text-yellow-900 font-semibold text-base">
                 Beta Launch: 200 spots at $29/mo – raising next week. Sign up now!
-              </span>
-            </AlertDescription>
-          </Alert>
+              </p>
+            </div>
+          </div>
           
           <div className="text-center">
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-bold text-foreground tracking-tight mb-6">
