@@ -698,19 +698,15 @@ router.post("/api/onboarding", isAuthenticated, async (req: Request, res: Respon
       longitude: geoData.lon,
       travelRadiusMinutes,
       flexForHighInterest,
+      usePerChildApproaches: usePerChildApproaches ?? false,
     });
 
     // Save family learning approaches if provided and not using per-child mode
-    if (learningApproaches && learningApproaches.length > 0 && !usePerChildApproaches) {
+    if (learningApproaches && learningApproaches.length > 0) {
       await storage.upsertFamilyApproach({
         familyId: family.id,
         approaches: learningApproaches,
       });
-    }
-
-    // Update family with per-child approaches flag if provided
-    if (usePerChildApproaches !== undefined) {
-      await storage.updateFamily(family.id, { usePerChildApproaches });
     }
 
     // Create children
@@ -896,6 +892,8 @@ router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Re
       lng: z.number().optional(),
       travelRadiusMinutes: z.number().min(5).max(120),
       flexForHighInterest: z.boolean(),
+      learningApproaches: z.array(z.string()).min(1),
+      usePerChildApproaches: z.boolean(),
       children: z.array(
         z.object({
           id: z.string().optional(),
@@ -925,7 +923,7 @@ router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Re
     });
 
     const validatedData = settingsSchema.parse(req.body);
-    const { familyName, country, address, lat, lng, travelRadiusMinutes, flexForHighInterest, children } = validatedData;
+    const { familyName, country, address, lat, lng, travelRadiusMinutes, flexForHighInterest, learningApproaches, usePerChildApproaches, children } = validatedData;
 
     // Geocode address if lat/lng not provided
     let coordinates = { lat, lng };
@@ -947,6 +945,7 @@ router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Re
         longitude: coordinates.lng,
         travelRadiusMinutes,
         flexForHighInterest,
+        usePerChildApproaches,
       });
     } else {
       // Update existing family data
@@ -958,8 +957,15 @@ router.put("/api/family/settings", isAuthenticated, async (req: Request, res: Re
         longitude: coordinates.lng,
         travelRadiusMinutes,
         flexForHighInterest,
+        usePerChildApproaches,
       });
     }
+    
+    // Update family learning approaches
+    await storage.upsertFamilyApproach({
+      familyId: family.id,
+      approaches: learningApproaches,
+    });
 
     // Update children - diff against existing to preserve IDs
     const existingChildren = await storage.getChildren(family.id);

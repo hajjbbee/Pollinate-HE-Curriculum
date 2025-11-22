@@ -240,6 +240,7 @@ export default function FamilySettings() {
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["/api/family"] });
       queryClient.invalidateQueries({ queryKey: ["/api/children"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/family/approach"] });
       
       toast({
         title: "Settings updated!",
