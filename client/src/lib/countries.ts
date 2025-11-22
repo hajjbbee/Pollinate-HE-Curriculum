@@ -208,7 +208,7 @@ export const ALL_COUNTRIES: Country[] = [
   { code: "ZW", name: "Zimbabwe", flag: "🇿🇼" },
 ];
 
-// Combined list with priority countries first, then separator, then all others
+// Combined list with priority countries first, then separator, then all others (deduplicated)
 export const getCountryList = (): (Country | { separator: true })[] => {
   const priorityCodes = new Set(PRIORITY_COUNTRIES.map(c => c.code));
   const otherCountries = ALL_COUNTRIES.filter(c => !priorityCodes.has(c.code));
@@ -217,7 +217,6 @@ export const getCountryList = (): (Country | { separator: true })[] => {
     ...PRIORITY_COUNTRIES,
     { separator: true },
     ...otherCountries,
-    { code: "OTHER", name: "Other / Not Listed", flag: "🌍" },
   ];
 };
 
@@ -254,12 +253,11 @@ export const detectCountry = (): string => {
   return "AU";
 };
 
-// Get all valid country codes for validation
-export const VALID_COUNTRY_CODES = [
-  ...PRIORITY_COUNTRIES.map(c => c.code),
-  ...ALL_COUNTRIES.map(c => c.code),
-  "OTHER"
-] as const;
+// Get all valid country codes for validation (deduplicated)
+const priorityCodes = PRIORITY_COUNTRIES.map(c => c.code);
+const allCodes = ALL_COUNTRIES.map(c => c.code);
+const uniqueCodes = [...new Set([...priorityCodes, ...allCodes])];
+export const VALID_COUNTRY_CODES = [...uniqueCodes, "OTHER"] as const;
 
 // Type for valid country codes
 export type CountryCode = typeof VALID_COUNTRY_CODES[number];

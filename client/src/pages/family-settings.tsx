@@ -109,7 +109,7 @@ export default function FamilySettings() {
     resolver: zodResolver(familySettingsSchema),
     defaultValues: {
       familyName: "",
-      country: "US",
+      country: detectCountry(),
       address: "",
       lat: undefined,
       lng: undefined,
@@ -152,9 +152,14 @@ export default function FamilySettings() {
 
   useEffect(() => {
     if (familyData && children && familyApproach) {
+      // Normalize legacy country values (e.g., "OTHER" -> "AU")
+      const normalizedCountry = familyData.country && familyData.country !== "OTHER" 
+        ? familyData.country 
+        : detectCountry();
+      
       form.reset({
         familyName: familyData.familyName || "",
-        country: familyData.country || "US",
+        country: normalizedCountry,
         address: familyData.address || "",
         lat: familyData.latitude,
         lng: familyData.longitude,
@@ -442,7 +447,12 @@ export default function FamilySettings() {
                       <SelectContent className="max-h-[300px]">
                         {getCountryList().map((item, index) => {
                           if ('separator' in item) {
-                            return <div key={`separator-${index}`} className="h-px bg-border my-1" />;
+                            return (
+                              <div key={`separator-${index}`} className="px-2 py-1.5">
+                                <div className="h-px bg-border" />
+                                <p className="text-xs text-muted-foreground mt-1.5">All Countries</p>
+                              </div>
+                            );
                           }
                           return (
                             <SelectItem key={item.code} value={item.code}>

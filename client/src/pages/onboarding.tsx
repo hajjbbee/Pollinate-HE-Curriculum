@@ -344,7 +344,12 @@ export default function Onboarding() {
                           <SelectContent className="max-h-[300px]">
                             {getCountryList().map((item, index) => {
                               if ('separator' in item) {
-                                return <div key={`separator-${index}`} className="h-px bg-border my-1" />;
+                                return (
+                                  <div key={`separator-${index}`} className="px-2 py-1.5">
+                                    <div className="h-px bg-border" />
+                                    <p className="text-xs text-muted-foreground mt-1.5">All Countries</p>
+                                  </div>
+                                );
                               }
                               return (
                                 <SelectItem key={item.code} value={item.code}>
