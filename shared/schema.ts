@@ -112,6 +112,8 @@ export const children = pgTable("children", {
   
   // High School Mode (ages 12+)
   isHighSchoolMode: boolean("is_high_school_mode").notNull().default(false),
+  educationStandard: varchar("education_standard").default("us"), // us, canada, uk, australia-nz, ib, eu, classical, custom
+  standardMetadata: jsonb("standard_metadata"), // Flexible JSON for edge cases and standard-specific data
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -139,6 +141,14 @@ export const transcriptCourses = pgTable("transcript_courses", {
   startDate: date("start_date"),
   endDate: date("end_date"),
   isComplete: boolean("is_complete").notNull().default(false),
+  
+  // International Standards Support
+  gcseLevel: varchar("gcse_level"), // UK: "Foundation", "Higher", null
+  ibGroup: varchar("ib_group"), // IB: "1-Studies in Language", "2-Language Acquisition", etc.
+  nceaLevel: varchar("ncea_level"), // Australia/NZ: "Level 1", "Level 2", "Level 3"
+  competencyTags: text("competency_tags").array(), // EU: Competency areas
+  standardExtras: jsonb("standard_extras"), // Flexible JSON for future standard-specific fields
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
