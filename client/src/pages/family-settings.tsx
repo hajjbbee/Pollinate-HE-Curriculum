@@ -19,9 +19,10 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { MapPin, User, Calendar, Plus, Trash2, Save, Sparkles, Facebook, Download, Shield, Brain } from "lucide-react";
+import { MapPin, User, Calendar, Plus, Trash2, Save, Sparkles, Facebook, Download, Shield, Brain, Globe2, BookOpen, Languages, BookMarked, Settings as SettingsIcon } from "lucide-react";
 import { PlacesAutocomplete } from "@/components/PlacesAutocomplete";
 import { useLocation } from "wouter";
+import { STANDARDS_CONFIG, type EducationStandard } from "@shared/standardsConfig";
 
 const familySettingsSchema = z.object({
   familyName: z.string().min(1, "Family name is required"),
@@ -56,6 +57,7 @@ const familySettingsSchema = z.object({
       isPerfectionist: z.boolean().optional(),
       // High School Mode (ages 12+)
       isHighSchoolMode: z.boolean().optional(),
+      educationStandard: z.string().optional(),
     })
   ).min(1, "Please add at least one child"),
 });
@@ -122,6 +124,7 @@ export default function FamilySettings() {
           anxietyIntensity: 0,
           isPerfectionist: false,
           isHighSchoolMode: false,
+          educationStandard: "us",
         },
       ],
     },
@@ -164,6 +167,7 @@ export default function FamilySettings() {
           anxietyIntensity: child.anxietyIntensity ?? 0,
           isPerfectionist: child.isPerfectionist ?? false,
           isHighSchoolMode: child.isHighSchoolMode ?? false,
+          educationStandard: child.educationStandard ?? "us",
         })),
       });
     }
@@ -961,8 +965,10 @@ export default function FamilySettings() {
                     const age = Math.floor((new Date().getTime() - new Date(birthdate).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
                     if (age < 12) return null;
 
+                    const isHighSchoolMode = form.watch(`children.${index}.isHighSchoolMode`);
+                    
                     return (
-                      <div className="mt-4 p-4 border-2 border-primary/20 rounded-lg bg-primary/5">
+                      <div className="mt-4 p-4 border-2 border-primary/20 rounded-lg bg-primary/5 space-y-4">
                         <FormField
                           control={form.control}
                           name={`children.${index}.isHighSchoolMode`}
@@ -985,6 +991,80 @@ export default function FamilySettings() {
                             </FormItem>
                           )}
                         />
+
+                        {/* Education Standard Selector (only when High School Mode is enabled) */}
+                        {isHighSchoolMode && (
+                          <div className="space-y-3 pt-4 border-t border-primary/20">
+                            <div>
+                              <Label className="text-base font-semibold">High School Standards</Label>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Choose the education framework for transcript generation and credit tracking
+                              </p>
+                            </div>
+
+                            <FormField
+                              control={form.control}
+                              name={`children.${index}.educationStandard`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                      {Object.values(STANDARDS_CONFIG).map((standard) => {
+                                        const Icon = standard.icon === "GraduationCap" ? Brain :
+                                                    standard.icon === "Globe2" ? Globe2 :
+                                                    standard.icon === "BookOpen" ? BookOpen :
+                                                    standard.icon === "Languages" ? Languages :
+                                                    standard.icon === "BookMarked" ? BookMarked :
+                                                    SettingsIcon;
+                                        
+                                        const isSelected = field.value === standard.id;
+                                        
+                                        return (
+                                          <button
+                                            key={standard.id}
+                                            type="button"
+                                            onClick={() => field.onChange(standard.id)}
+                                            className={`p-3 rounded-lg border-2 text-left transition-all hover-elevate ${
+                                              isSelected 
+                                                ? "border-primary bg-primary/10" 
+                                                : "border-border bg-card"
+                                            }`}
+                                            data-testid={`button-standard-${standard.id}-${index}`}
+                                          >
+                                            <div className="flex flex-col items-center text-center space-y-2">
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-2xl" role="img" aria-label={standard.name}>
+                                                  {standard.flag}
+                                                </span>
+                                                <Icon className="w-4 h-4 text-muted-foreground" />
+                                              </div>
+                                              <div className="space-y-0.5">
+                                                <p className="text-xs font-semibold">{standard.shortName}</p>
+                                                <p className="text-[10px] text-muted-foreground line-clamp-2">
+                                                  {standard.creditLabel}
+                                                </p>
+                                              </div>
+                                            </div>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </FormControl>
+                                  <FormDescription className="text-xs">
+                                    {field.value && STANDARDS_CONFIG[field.value as EducationStandard]?.tooltip}
+                                  </FormDescription>
+                                </FormItem>
+                              )}
+                            />
+
+                            <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg">
+                              <Sparkles className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                              <p className="text-xs text-muted-foreground">
+                                <strong className="text-foreground">We support high school requirements in 50+ countries.</strong> If yours isn't listed, choose 'Custom' and we'll adapt to your specific requirements.
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
