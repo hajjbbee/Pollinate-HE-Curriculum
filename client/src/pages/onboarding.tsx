@@ -43,7 +43,8 @@ const step2Schema = z.object({
 });
 
 const step3Schema = z.object({
-  learningApproach: z.string().min(1, "Please select a learning approach"),
+  learningApproaches: z.array(z.string()).min(1, "Please select at least one learning approach"),
+  usePerChildApproaches: z.boolean(),
 });
 
 const childSchema = z.object({
@@ -109,7 +110,8 @@ export default function Onboarding() {
   const step3Form = useForm<Step3Data>({
     resolver: zodResolver(step3Schema),
     defaultValues: {
-      learningApproach: "perfect-blend",
+      learningApproaches: ["perfect-blend"],
+      usePerChildApproaches: false,
     },
   });
 
@@ -503,7 +505,7 @@ export default function Onboarding() {
                 </div>
                 <div>
                   <CardTitle className="font-heading">Choose Your Learning Approach</CardTitle>
-                  <CardDescription>Select the educational philosophy that resonates with your family</CardDescription>
+                  <CardDescription>Select one or more educational philosophies to blend seamlessly</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -512,20 +514,55 @@ export default function Onboarding() {
                 <form onSubmit={step3Form.handleSubmit(onStep3Submit)} className="space-y-6">
                   <FormField
                     control={step3Form.control}
-                    name="learningApproach"
+                    name="usePerChildApproaches"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="font-medium">
+                            Customize per child
+                          </FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            Set different learning approaches for each child (configured later)
+                          </p>
+                        </div>
                         <FormControl>
-                          <LearningApproachSelector
-                            value={field.value as LearningApproach}
-                            onChange={field.onChange}
-                            hideTitle={true}
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-per-child-approaches"
                           />
                         </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
+
+                  {!step3Form.watch("usePerChildApproaches") && (
+                    <FormField
+                      control={step3Form.control}
+                      name="learningApproaches"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <LearningApproachSelector
+                              value={field.value as LearningApproach[]}
+                              onChange={field.onChange}
+                              hideTitle={true}
+                              multiSelect={true}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {step3Form.watch("usePerChildApproaches") && (
+                    <div className="rounded-lg bg-muted/50 p-4">
+                      <p className="text-sm text-muted-foreground text-center">
+                        You'll set learning approaches for each child in the next step
+                      </p>
+                    </div>
+                  )}
 
                   <div className="flex gap-3">
                     <Button type="button" variant="outline" onClick={() => setStep(2)} className="flex-1" data-testid="button-back">
