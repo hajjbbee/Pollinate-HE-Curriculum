@@ -3,22 +3,34 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, Sparkles, Zap, GraduationCap } from "lucide-react";
+import { Check, Sparkles, Zap, GraduationCap, Users, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 
-// NOTE: High School price ID must match server/stripe.ts
-// Create $199/month recurring price in Stripe Dashboard and update both files
+// Beta Launch Price IDs (TEST MODE) - must match server/stripe.ts
 const STRIPE_PRICE_IDS = {
-  basic: "price_1SV7cU7CoNMLNNsVdph4m8zi",
-  pro: "price_1SV7cW7CoNMLNNsVvN4BWC47",
-  highschool: "price_PLACEHOLDER_HIGHSCHOOL", // REQUIRED: Update after creating in Stripe
+  starter: "price_BETA_STARTER_29",
+  familypro: "price_BETA_FAMILYPRO_59",
+  highschool: "price_BETA_HIGHSCHOOL_99",
+  coop: "price_BETA_COOP_199",
+} as const;
+
+// Beta spot limits and taken counts (simulated - in production, fetch from backend)
+const BETA_SPOTS = {
+  starter: { limit: 200, taken: 17 },
+  familypro: { limit: 150, taken: 12 },
+  highschool: { limit: 50, taken: 8 },
+  coop: { limit: 10, taken: 3 },
 } as const;
 
 export default function Pricing() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [selectedPlan, setSelectedPlan] = useState<"basic" | "pro" | "highschool" | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<"starter" | "familypro" | "highschool" | "coop" | null>(null);
+  
+  const totalSpotsLeft = Object.values(BETA_SPOTS).reduce((acc, spot) => acc + (spot.limit - spot.taken), 0);
 
   const { data: subscription } = useQuery<{
     plan: string;
@@ -48,7 +60,7 @@ export default function Pricing() {
     },
   });
 
-  const handleSelectPlan = (plan: "basic" | "pro" | "highschool") => {
+  const handleSelectPlan = (plan: "starter" | "familypro" | "highschool" | "coop") => {
     setSelectedPlan(plan);
     const priceId = STRIPE_PRICE_IDS[plan];
     createCheckoutSession(priceId);
@@ -60,126 +72,141 @@ export default function Pricing() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-16">
+        <Alert className="max-w-4xl mx-auto mb-8 border-primary bg-primary/5" data-testid="alert-beta-banner">
+          <AlertCircle className="h-5 w-5 text-primary" />
+          <AlertDescription className="flex items-center justify-between flex-wrap gap-2">
+            <span className="font-semibold text-base">
+              🚀 Limited Beta Launch – Prices Increase Next Week!
+            </span>
+            <Badge variant="secondary" className="text-sm" data-testid="badge-spots-remaining">
+              {totalSpotsLeft} spots remaining
+            </Badge>
+          </AlertDescription>
+        </Alert>
+
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">Choose Your Plan</h1>
+          <h1 className="text-4xl font-bold mb-4">Choose Your Beta Plan</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Unlock AI-powered personalized homeschool curriculum for your family
+            Lock in lifetime beta pricing before rates increase. AI-powered personalized homeschool curriculum for your family.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          <Card className={currentPlan === "basic" && isActive ? "border-primary" : ""}>
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+          <Card className={currentPlan === "starter" && isActive ? "border-primary" : ""}>
             <CardHeader>
               <div className="flex items-center justify-between mb-2">
-                <CardTitle className="text-2xl">Basic</CardTitle>
-                <Sparkles className="h-6 w-6 text-primary" />
+                <CardTitle className="text-xl">Starter</CardTitle>
+                <Sparkles className="h-5 w-5 text-primary" />
               </div>
               <div className="mb-2">
-                <span className="text-4xl font-bold">$49</span>
-                <span className="text-muted-foreground">/month</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold">${"29"}</span>
+                  <span className="text-sm text-muted-foreground line-through">${"49"}</span>
+                </div>
+                <span className="text-xs text-muted-foreground">/month</span>
               </div>
-              <CardDescription>Perfect for getting started with AI-powered curriculum</CardDescription>
+              <Badge variant="secondary" className="mb-2" data-testid="badge-spots-starter">
+                {BETA_SPOTS.starter.limit - BETA_SPOTS.starter.taken} of {BETA_SPOTS.starter.limit} spots left
+              </Badge>
+              <CardDescription className="text-xs">Perfect for getting started</CardDescription>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-3">
+              <ul className="space-y-2 text-sm">
                 <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-basic-1" />
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                   <span>Up to 3 children</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-basic-2" />
-                  <span>12-week rolling AI curriculum</span>
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>12-week AI curriculum</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-basic-3" />
-                  <span>Charlotte Mason & Montessori methods</span>
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>8 learning approaches</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-basic-4" />
-                  <span>Local opportunity discovery</span>
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Local opportunities</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-basic-5" />
-                  <span>Daily journal with photo uploads</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-basic-6" />
-                  <span>Weekly curriculum regeneration</span>
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Daily journal</span>
                 </li>
               </ul>
             </CardContent>
             <CardFooter>
-              {currentPlan === "basic" && isActive ? (
-                <Button variant="outline" className="w-full" disabled data-testid="button-current-basic">
+              {currentPlan === "starter" && isActive ? (
+                <Button variant="outline" className="w-full" disabled data-testid="button-current-starter">
                   Current Plan
                 </Button>
               ) : (
                 <Button
                   className="w-full"
-                  onClick={() => handleSelectPlan("basic")}
+                  onClick={() => handleSelectPlan("starter")}
                   disabled={isPending}
-                  data-testid="button-select-basic"
+                  data-testid="button-select-starter"
                 >
-                  {isPending && selectedPlan === "basic" ? "Loading..." : "Get Started"}
+                  {isPending && selectedPlan === "starter" ? "Loading..." : "Choose Beta Plan"}
                 </Button>
               )}
             </CardFooter>
           </Card>
 
-          <Card className={currentPlan === "pro" && isActive ? "border-primary" : ""}>
+          <Card className={currentPlan === "familypro" && isActive ? "border-primary" : ""}>
             <CardHeader>
               <div className="flex items-center justify-between mb-2">
-                <CardTitle className="text-2xl">Pro</CardTitle>
-                <Zap className="h-6 w-6 text-primary" />
+                <CardTitle className="text-xl">Family Pro</CardTitle>
+                <Zap className="h-5 w-5 text-primary" />
               </div>
               <div className="mb-2">
-                <span className="text-4xl font-bold">$99</span>
-                <span className="text-muted-foreground">/month</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold">${"59"}</span>
+                  <span className="text-sm text-muted-foreground line-through">${"99"}</span>
+                </div>
+                <span className="text-xs text-muted-foreground">/month</span>
               </div>
-              <CardDescription>Everything in Basic, plus advanced features</CardDescription>
+              <Badge variant="secondary" className="mb-2" data-testid="badge-spots-familypro">
+                {BETA_SPOTS.familypro.limit - BETA_SPOTS.familypro.taken} of {BETA_SPOTS.familypro.limit} spots left
+              </Badge>
+              <CardDescription className="text-xs">Most popular for families</CardDescription>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-3">
+              <ul className="space-y-2 text-sm">
                 <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-pro-1" />
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                   <span className="font-semibold">Unlimited children</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-pro-2" />
-                  <span>Everything in Basic</span>
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Everything in Starter</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-pro-3" />
-                  <span className="font-semibold">Advanced analytics dashboard</span>
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Weekly PDF downloads</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-pro-4" />
-                  <span>Real-time collaboration (coming soon)</span>
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Priority support</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-pro-5" />
-                  <span className="font-semibold">Priority support</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-pro-6" />
-                  <span>Exclusive educational resources</span>
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Voice journaling</span>
                 </li>
               </ul>
             </CardContent>
             <CardFooter>
-              {currentPlan === "pro" && isActive ? (
-                <Button variant="outline" className="w-full" disabled data-testid="button-current-pro">
+              {currentPlan === "familypro" && isActive ? (
+                <Button variant="outline" className="w-full" disabled data-testid="button-current-familypro">
                   Current Plan
                 </Button>
               ) : (
                 <Button
                   className="w-full"
-                  variant="default"
-                  onClick={() => handleSelectPlan("pro")}
+                  onClick={() => handleSelectPlan("familypro")}
                   disabled={isPending}
-                  data-testid="button-select-pro"
+                  data-testid="button-select-familypro"
                 >
-                  {isPending && selectedPlan === "pro" ? "Loading..." : "Upgrade to Pro"}
+                  {isPending && selectedPlan === "familypro" ? "Loading..." : "Choose Beta Plan"}
                 </Button>
               )}
             </CardFooter>
@@ -188,40 +215,42 @@ export default function Pricing() {
           <Card className={currentPlan === "highschool" && isActive ? "border-primary" : ""}>
             <CardHeader>
               <div className="flex items-center justify-between mb-2">
-                <CardTitle className="text-2xl">High School + Transcript</CardTitle>
-                <GraduationCap className="h-6 w-6 text-primary" />
+                <CardTitle className="text-xl">High School</CardTitle>
+                <GraduationCap className="h-5 w-5 text-primary" />
               </div>
               <div className="mb-2">
-                <span className="text-4xl font-bold">$199</span>
-                <span className="text-muted-foreground">/month</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold">${"99"}</span>
+                  <span className="text-sm text-muted-foreground line-through">${"179"}</span>
+                </div>
+                <span className="text-xs text-muted-foreground">/month</span>
               </div>
-              <CardDescription>Everything in Pro, plus college-ready transcripts</CardDescription>
+              <Badge variant="secondary" className="mb-2" data-testid="badge-spots-highschool">
+                {BETA_SPOTS.highschool.limit - BETA_SPOTS.highschool.taken} of {BETA_SPOTS.highschool.limit} spots left
+              </Badge>
+              <CardDescription className="text-xs">College-ready transcripts</CardDescription>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-3">
+              <ul className="space-y-2 text-sm">
                 <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-highschool-1" />
-                  <span className="font-semibold">Official high school transcripts</span>
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span className="font-semibold">Official transcripts</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-highschool-2" />
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                   <span>Everything in Pro</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-highschool-3" />
-                  <span className="font-semibold">Automatic credit tracking</span>
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>8 education standards</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-highschool-4" />
-                  <span>AI-generated course descriptions</span>
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Auto credit tracking</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-highschool-5" />
-                  <span className="font-semibold">College-board style PDFs</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-highschool-6" />
-                  <span>Notary-ready transcript exports</span>
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Notary-ready PDFs</span>
                 </li>
               </ul>
             </CardContent>
@@ -233,12 +262,71 @@ export default function Pricing() {
               ) : (
                 <Button
                   className="w-full"
-                  variant="default"
                   onClick={() => handleSelectPlan("highschool")}
                   disabled={isPending}
                   data-testid="button-select-highschool"
                 >
-                  {isPending && selectedPlan === "highschool" ? "Loading..." : "Upgrade to High School"}
+                  {isPending && selectedPlan === "highschool" ? "Loading..." : "Choose Beta Plan"}
+                </Button>
+              )}
+            </CardFooter>
+          </Card>
+
+          <Card className={currentPlan === "coop" && isActive ? "border-primary" : ""}>
+            <CardHeader>
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle className="text-xl">Co-op</CardTitle>
+                <Users className="h-5 w-5 text-primary" />
+              </div>
+              <div className="mb-2">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold">${"199"}</span>
+                  <span className="text-sm text-muted-foreground line-through">${"399"}</span>
+                </div>
+                <span className="text-xs text-muted-foreground">/month</span>
+              </div>
+              <Badge variant="secondary" className="mb-2" data-testid="badge-spots-coop">
+                {BETA_SPOTS.coop.limit - BETA_SPOTS.coop.taken} of {BETA_SPOTS.coop.limit} spots left
+              </Badge>
+              <CardDescription className="text-xs">For homeschool groups</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span className="font-semibold">Up to 5 families</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Everything in High School</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Group planning tools</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>Shared events calendar</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>White-label option</span>
+                </li>
+              </ul>
+            </CardContent>
+            <CardFooter>
+              {currentPlan === "coop" && isActive ? (
+                <Button variant="outline" className="w-full" disabled data-testid="button-current-coop">
+                  Current Plan
+                </Button>
+              ) : (
+                <Button
+                  className="w-full"
+                  onClick={() => handleSelectPlan("coop")}
+                  disabled={isPending}
+                  data-testid="button-select-coop"
+                >
+                  {isPending && selectedPlan === "coop" ? "Loading..." : "Choose Beta Plan"}
                 </Button>
               )}
             </CardFooter>
@@ -246,8 +334,11 @@ export default function Pricing() {
         </div>
 
         <div className="mt-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            All plans include a 7-day free trial. Cancel anytime.
+          <p className="text-sm text-muted-foreground mb-2">
+            🔒 Lock in lifetime beta pricing today. Rates increase next week!
+          </p>
+          <p className="text-xs text-muted-foreground">
+            All plans in Stripe Test Mode. 7-day free trial. Cancel anytime.
           </p>
           <Button
             variant="ghost"
