@@ -244,7 +244,7 @@ export default function FamilySettings() {
       
       toast({
         title: "Settings updated!",
-        description: "Your curriculum is being refreshed with the new details...",
+        description: "Generating your custom curriculum... (10–20s)",
       });
       
       setIsRegenerating(true);

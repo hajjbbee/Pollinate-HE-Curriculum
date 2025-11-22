@@ -297,12 +297,9 @@ export default function Dashboard() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
         <Sparkles className="w-12 h-12 text-primary mx-auto mb-4" />
-        <h2 className="text-2xl font-heading font-bold mb-2">No Curriculum Yet</h2>
+        <h2 className="text-2xl font-heading font-bold mb-2">Generating your custom curriculum... (10–20s)</h2>
         <p className="text-muted-foreground mb-6">
-          Your curriculum will be generated automatically. This may take a moment.
-        </p>
-        <p className="text-sm text-muted-foreground mb-6">
-          If it's taking too long, you can regenerate from Family Settings.
+          Your personalized curriculum is being created. Please refresh in a moment.
         </p>
         <Link href="/settings/family">
           <Button size="lg" data-testid="button-goto-settings">
@@ -319,7 +316,7 @@ export default function Dashboard() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
         <Sparkles className="w-12 h-12 text-primary mx-auto mb-4" />
-        <h2 className="text-2xl font-heading font-bold mb-2">Generating Curriculum...</h2>
+        <h2 className="text-2xl font-heading font-bold mb-2">Generating your custom curriculum... (10–20s)</h2>
         <p className="text-muted-foreground mb-6">
           Your personalized curriculum is being created. Please refresh in a moment.
         </p>

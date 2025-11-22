@@ -144,7 +144,7 @@ export default function Onboarding() {
       } else {
         toast({
           title: "Welcome to Pollinate!",
-          description: "Your family profile has been created. Generating your first curriculum...",
+          description: "Your family profile has been created. Generating your custom curriculum... (10–20s)",
         });
       }
       navigate("/dashboard");
