@@ -256,7 +256,7 @@ export const detectCountry = (): string => {
 // Get all valid country codes for validation (deduplicated)
 const priorityCodes = PRIORITY_COUNTRIES.map(c => c.code);
 const allCodes = ALL_COUNTRIES.map(c => c.code);
-const uniqueCodes = [...new Set([...priorityCodes, ...allCodes])];
+const uniqueCodes = Array.from(new Set([...priorityCodes, ...allCodes]));
 export const VALID_COUNTRY_CODES = [...uniqueCodes, "OTHER"] as const;
 
 // Type for valid country codes
