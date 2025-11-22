@@ -27,7 +27,7 @@ export default function Landing() {
             <div className="flex items-center justify-center gap-3">
               <AlertCircle className="h-5 w-5 text-yellow-700 shrink-0" />
               <p className="text-center text-yellow-900 font-semibold text-base">
-                Beta Launch: 200 spots at $29/mo – raising next week. Sign up now!
+                Beta Launch: 200 spots at $29 AUD/mo – raising next week. Sign up now!
               </p>
             </div>
           </div>

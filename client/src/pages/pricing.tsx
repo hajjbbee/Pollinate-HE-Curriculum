@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 
 // IMPORTANT: Create these prices in Stripe Dashboard (Test Mode) and update IDs below
 // Beta Launch Price IDs (TEST MODE) - must match server/stripe.ts
-// Format: Create recurring prices at $29, $59, $99, $199/month in Stripe Dashboard
+// Format: Create recurring prices at $29 AUD, $59 AUD, $99 AUD, $199 AUD/month in Stripe Dashboard
 const STRIPE_PRICE_IDS = {
   starter: "price_BETA_STARTER_29",        // TODO: Replace with actual Stripe test mode price ID
   familypro: "price_BETA_FAMILYPRO_59",    // TODO: Replace with actual Stripe test mode price ID
@@ -103,8 +103,8 @@ export default function Pricing() {
               </div>
               <div className="mb-2">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold">${"29"}</span>
-                  <span className="text-sm text-muted-foreground line-through">${"49"}</span>
+                  <span className="text-3xl font-bold">$29 <span className="text-base">AUD</span></span>
+                  <span className="text-sm text-muted-foreground line-through">$49 AUD</span>
                 </div>
                 <span className="text-xs text-muted-foreground">/month</span>
               </div>
@@ -163,8 +163,8 @@ export default function Pricing() {
               </div>
               <div className="mb-2">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold">${"59"}</span>
-                  <span className="text-sm text-muted-foreground line-through">${"99"}</span>
+                  <span className="text-3xl font-bold">$59 <span className="text-base">AUD</span></span>
+                  <span className="text-sm text-muted-foreground line-through">$99 AUD</span>
                 </div>
                 <span className="text-xs text-muted-foreground">/month</span>
               </div>
@@ -223,8 +223,8 @@ export default function Pricing() {
               </div>
               <div className="mb-2">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold">${"99"}</span>
-                  <span className="text-sm text-muted-foreground line-through">${"179"}</span>
+                  <span className="text-3xl font-bold">$99 <span className="text-base">AUD</span></span>
+                  <span className="text-sm text-muted-foreground line-through">$179 AUD</span>
                 </div>
                 <span className="text-xs text-muted-foreground">/month</span>
               </div>
@@ -283,8 +283,8 @@ export default function Pricing() {
               </div>
               <div className="mb-2">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold">${"199"}</span>
-                  <span className="text-sm text-muted-foreground line-through">${"399"}</span>
+                  <span className="text-3xl font-bold">$199 <span className="text-base">AUD</span></span>
+                  <span className="text-sm text-muted-foreground line-through">$399 AUD</span>
                 </div>
                 <span className="text-xs text-muted-foreground">/month</span>
               </div>
