@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Switch, Route, Link, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -9,23 +10,46 @@ import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupCon
 import { Home, BookOpen, MapPin, Settings as SettingsIcon, Sparkles, LogOut, Shield, GraduationCap } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useQuery } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import Landing from "@/pages/landing";
 import Onboarding from "@/pages/onboarding";
-import Dashboard from "@/pages/dashboard";
 import Today from "@/pages/today";
 import ThisWeek from "@/pages/this-week";
 import ResourcesPage from "@/pages/resources";
 import ProgressPage from "@/pages/progress";
-import Journal from "@/pages/journal";
-import Opportunities from "@/pages/opportunities";
-import FamilySettings from "@/pages/family-settings";
 import Privacy from "@/pages/privacy";
 import Pricing from "@/pages/pricing";
-import TranscriptPage from "@/pages/transcript";
 import NotFound from "@/pages/not-found";
 import { BottomNav } from "@/components/BottomNav";
 import { FloatingHelpButton } from "@/components/FloatingHelpButton";
+
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const Journal = lazy(() => import("@/pages/journal"));
+const Opportunities = lazy(() => import("@/pages/opportunities"));
+const FamilySettings = lazy(() => import("@/pages/family-settings"));
+const TranscriptPage = lazy(() => import("@/pages/transcript"));
+
+function PageLoader() {
+  return (
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-96" />
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="space-y-3 rounded-lg border p-4">
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-10 w-full mt-4" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function AppSidebar() {
   const [location] = useLocation();
@@ -132,6 +156,31 @@ function AppSidebar() {
 function MobileRouter() {
   return (
     <>
+      <Suspense fallback={<PageLoader />}>
+        <Switch>
+          <Route path="/" component={Today} />
+          <Route path="/today" component={Today} />
+          <Route path="/this-week" component={ThisWeek} />
+          <Route path="/resources" component={ResourcesPage} />
+          <Route path="/progress" component={ProgressPage} />
+          <Route path="/dashboard" component={Dashboard} />
+          <Route path="/journal" component={Journal} />
+          <Route path="/opportunities" component={Opportunities} />
+          <Route path="/transcripts" component={TranscriptPage} />
+          <Route path="/settings" component={FamilySettings} />
+          <Route path="/privacy" component={Privacy} />
+          <Route path="/pricing" component={Pricing} />
+          <Route component={NotFound} />
+        </Switch>
+      </Suspense>
+      <BottomNav />
+    </>
+  );
+}
+
+function DesktopRouter() {
+  return (
+    <Suspense fallback={<PageLoader />}>
       <Switch>
         <Route path="/" component={Today} />
         <Route path="/today" component={Today} />
@@ -147,28 +196,7 @@ function MobileRouter() {
         <Route path="/pricing" component={Pricing} />
         <Route component={NotFound} />
       </Switch>
-      <BottomNav />
-    </>
-  );
-}
-
-function DesktopRouter() {
-  return (
-    <Switch>
-      <Route path="/" component={Today} />
-      <Route path="/today" component={Today} />
-      <Route path="/this-week" component={ThisWeek} />
-      <Route path="/resources" component={ResourcesPage} />
-      <Route path="/progress" component={ProgressPage} />
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/journal" component={Journal} />
-      <Route path="/opportunities" component={Opportunities} />
-      <Route path="/transcripts" component={TranscriptPage} />
-      <Route path="/settings" component={FamilySettings} />
-      <Route path="/privacy" component={Privacy} />
-      <Route path="/pricing" component={Pricing} />
-      <Route component={NotFound} />
-    </Switch>
+    </Suspense>
   );
 }
 
