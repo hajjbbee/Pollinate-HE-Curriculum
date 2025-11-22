@@ -21,6 +21,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { MapPin, User, Calendar, Plus, Trash2, Save, Sparkles, Facebook, Download, Shield, Brain, Globe2, BookOpen, Languages, BookMarked, Settings as SettingsIcon } from "lucide-react";
 import { PlacesAutocomplete } from "@/components/PlacesAutocomplete";
+import { LearningApproachSelector, type LearningApproach } from "@/components/LearningApproachSelector";
 import { useLocation } from "wouter";
 import { STANDARDS_CONFIG, type EducationStandard } from "@shared/standardsConfig";
 
@@ -38,6 +39,8 @@ const familySettingsSchema = z.object({
   lng: z.number().optional(),
   travelRadiusMinutes: z.number().min(15).max(120),
   flexForHighInterest: z.boolean(),
+  learningApproaches: z.array(z.string()).min(1, "Please select at least one learning approach"),
+  usePerChildApproaches: z.boolean(),
   children: z.array(
     z.object({
       id: z.string().optional(),
@@ -86,6 +89,12 @@ export default function FamilySettings() {
     enabled: !!user,
   });
 
+  const { data: familyApproach, isLoading: approachLoading } = useQuery({
+    queryKey: ["/api/family/approach"],
+    retry: false,
+    enabled: !!user,
+  });
+
   const { data: children, isLoading: childrenLoading } = useQuery({
     queryKey: ["/api/children"],
     retry: false,
@@ -108,6 +117,8 @@ export default function FamilySettings() {
       lng: undefined,
       travelRadiusMinutes: 30,
       flexForHighInterest: true,
+      learningApproaches: ["perfect-blend"],
+      usePerChildApproaches: false,
       children: [
         {
           name: "",
@@ -142,7 +153,7 @@ export default function FamilySettings() {
   });
 
   useEffect(() => {
-    if (familyData && children) {
+    if (familyData && children && familyApproach) {
       form.reset({
         familyName: familyData.familyName || "",
         country: familyData.country || "US",
@@ -151,6 +162,8 @@ export default function FamilySettings() {
         lng: familyData.longitude,
         travelRadiusMinutes: familyData.travelRadiusMinutes || 30,
         flexForHighInterest: familyData.flexForHighInterest ?? true,
+        learningApproaches: familyApproach.approaches || ["perfect-blend"],
+        usePerChildApproaches: familyData.usePerChildApproaches ?? false,
         children: children.map((child: any) => ({
           id: child.id,
           name: child.name,
@@ -177,7 +190,7 @@ export default function FamilySettings() {
         })),
       });
     }
-  }, [familyData, children]);
+  }, [familyData, children, familyApproach]);
 
   const addGroupMutation = useMutation({
     mutationFn: async (data: { groupUrl: string; groupName: string }) => {
@@ -367,7 +380,7 @@ export default function FamilySettings() {
     updateSettingsMutation.mutate(data);
   };
 
-  if (familyLoading || childrenLoading) {
+  if (familyLoading || childrenLoading || approachLoading) {
     return (
       <div className="container max-w-4xl mx-auto p-6">
         <Skeleton className="h-12 w-64 mb-8" />
@@ -544,6 +557,68 @@ export default function FamilySettings() {
                   </FormItem>
                 )}
               />
+            </CardContent>
+          </Card>
+
+          {/* Learning Approaches */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                <CardTitle className="font-heading">Learning Approaches</CardTitle>
+              </div>
+              <CardDescription>Select one or more educational philosophies to blend seamlessly</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <FormField
+                control={form.control}
+                name="usePerChildApproaches"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Customize per child</FormLabel>
+                      <FormDescription>
+                        Set different learning approaches for each child
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="switch-per-child-approaches"
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {!form.watch("usePerChildApproaches") && (
+                <FormField
+                  control={form.control}
+                  name="learningApproaches"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <LearningApproachSelector
+                          value={field.value as LearningApproach[]}
+                          onChange={field.onChange}
+                          hideTitle={true}
+                          multiSelect={true}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {form.watch("usePerChildApproaches") && (
+                <div className="rounded-lg bg-muted/50 p-4">
+                  <p className="text-sm text-muted-foreground text-center">
+                    Configure learning approaches for each child in the "Children" section below
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
