@@ -3,19 +3,20 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, Sparkles, Zap } from "lucide-react";
+import { Check, Sparkles, Zap, GraduationCap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 const STRIPE_PRICE_IDS = {
   basic: "price_1SV7cU7CoNMLNNsVdph4m8zi",
   pro: "price_1SV7cW7CoNMLNNsVvN4BWC47",
+  highschool: "price_PLACEHOLDER_HIGHSCHOOL",
 } as const;
 
 export default function Pricing() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [selectedPlan, setSelectedPlan] = useState<"basic" | "pro" | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<"basic" | "pro" | "highschool" | null>(null);
 
   const { data: subscription } = useQuery<{
     plan: string;
@@ -45,7 +46,7 @@ export default function Pricing() {
     },
   });
 
-  const handleSelectPlan = (plan: "basic" | "pro") => {
+  const handleSelectPlan = (plan: "basic" | "pro" | "highschool") => {
     setSelectedPlan(plan);
     const priceId = STRIPE_PRICE_IDS[plan];
     createCheckoutSession(priceId);
@@ -64,7 +65,7 @@ export default function Pricing() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
           <Card className={currentPlan === "basic" && isActive ? "border-primary" : ""}>
             <CardHeader>
               <div className="flex items-center justify-between mb-2">
@@ -177,6 +178,65 @@ export default function Pricing() {
                   data-testid="button-select-pro"
                 >
                   {isPending && selectedPlan === "pro" ? "Loading..." : "Upgrade to Pro"}
+                </Button>
+              )}
+            </CardFooter>
+          </Card>
+
+          <Card className={currentPlan === "highschool" && isActive ? "border-primary" : ""}>
+            <CardHeader>
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle className="text-2xl">High School + Transcript</CardTitle>
+                <GraduationCap className="h-6 w-6 text-primary" />
+              </div>
+              <div className="mb-2">
+                <span className="text-4xl font-bold">$199</span>
+                <span className="text-muted-foreground">/month</span>
+              </div>
+              <CardDescription>Everything in Pro, plus college-ready transcripts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3">
+                <li className="flex items-start gap-2">
+                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-highschool-1" />
+                  <span className="font-semibold">Official high school transcripts</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-highschool-2" />
+                  <span>Everything in Pro</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-highschool-3" />
+                  <span className="font-semibold">Automatic credit tracking</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-highschool-4" />
+                  <span>AI-generated course descriptions</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-highschool-5" />
+                  <span className="font-semibold">College-board style PDFs</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" data-testid="icon-check-highschool-6" />
+                  <span>Notary-ready transcript exports</span>
+                </li>
+              </ul>
+            </CardContent>
+            <CardFooter>
+              {currentPlan === "highschool" && isActive ? (
+                <Button variant="outline" className="w-full" disabled data-testid="button-current-highschool">
+                  Current Plan
+                </Button>
+              ) : (
+                <Button
+                  className="w-full"
+                  variant="default"
+                  onClick={() => handleSelectPlan("highschool")}
+                  disabled={isPending}
+                  data-testid="button-select-highschool"
+                >
+                  {isPending && selectedPlan === "highschool" ? "Loading..." : "Upgrade to High School"}
                 </Button>
               )}
             </CardFooter>
