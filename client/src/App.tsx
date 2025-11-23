@@ -217,39 +217,54 @@ function Router() {
   const isMobile = useMobile();
 
   // Check if user has completed onboarding (has a family record)
-  // Tolerate 404 errors (no family exists yet)
-  const { data: familyData, isLoading: familyLoading } = useQuery<{ family: any } | null>({
+  // Handle 404 as "no family yet" rather than query error
+  const { data: familyData, isLoading: familyLoading, isError } = useQuery<{ family: any } | null>({
     queryKey: ["/api/family"],
     enabled: isAuthenticated && !!user,
-    retry: (failureCount, error: any) => {
-      // Don't retry on 404 - family just doesn't exist yet
-      if (error?.status === 404 || error?.response?.status === 404) {
-        return false;
+    queryFn: async () => {
+      const res = await fetch('/api/family', { credentials: 'include' });
+      if (res.status === 404) {
+        // No family exists yet - this is normal for new users
+        return { family: null };
       }
-      return failureCount < 2;
+      if (!res.ok) {
+        throw new Error('Failed to fetch family');
+      }
+      return res.json();
     },
   });
+
+  // Only proceed with redirects once the family query has settled
+  const familyQuerySettled = !familyLoading && !isError;
+  const hasFamily = familyData?.family;
 
   // Public routes that authenticated users can visit
   const publicRoutes = ["/", "/privacy", "/pricing"];
   const isOnPublicRoute = publicRoutes.includes(location);
 
-  // Redirect authenticated users from public routes to the appropriate page
+  // Redirect authenticated users from public routes OR from onboarding if they have a family
   useEffect(() => {
-    if (!isAuthenticated || familyLoading || !isOnPublicRoute) {
+    if (!isAuthenticated || !familyQuerySettled) {
       return;
     }
 
-    const hasFamily = familyData?.family;
-
-    if (!hasFamily) {
-      // New user without family -> onboarding
-      setLocation("/onboarding");
-    } else {
-      // Returning user with family -> dashboard
+    // Prevent users with families from accessing onboarding
+    if (hasFamily && location === "/onboarding") {
       setLocation("/dashboard");
+      return;
     }
-  }, [isAuthenticated, familyLoading, familyData, location, isOnPublicRoute, setLocation]);
+
+    // Redirect from public routes to appropriate page
+    if (isOnPublicRoute) {
+      if (!hasFamily) {
+        // New user without family -> onboarding
+        setLocation("/onboarding");
+      } else {
+        // Returning user with family -> dashboard
+        setLocation("/dashboard");
+      }
+    }
+  }, [isAuthenticated, familyQuerySettled, hasFamily, location, isOnPublicRoute, setLocation]);
 
   if (isLoading || (isAuthenticated && familyLoading)) {
     return (
