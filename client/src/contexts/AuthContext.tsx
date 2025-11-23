@@ -25,10 +25,19 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
-  // Fetch current user
-  const { data, isLoading } = useQuery<{ user: User | null }>({
+  // Fetch current user with proper error handling
+  const { data, isLoading, error } = useQuery<{ user: User | null }>({
     queryKey: ['/api/user'],
-    retry: false,
+    retry: (failureCount, error: any) => {
+      // Don't retry on 401 (unauthorized) - user is not logged in
+      if (error?.status === 401 || error?.response?.status === 401) {
+        return false;
+      }
+      // Retry other errors up to 2 times
+      return failureCount < 2;
+    },
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   const user = data?.user || null;

@@ -14,7 +14,7 @@ export function getSession() {
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
+    createTableIfMissing: true, // Automatically create sessions table if it doesn't exist
     ttl: sessionTtl,
     tableName: "sessions",
   });
@@ -216,11 +216,37 @@ export async function setupAuth(app: Express) {
 }
 
 // Middleware to check if user is authenticated
-export const isAuthenticated: RequestHandler = (req, res, next) => {
-  if (req.session.userId) {
+export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  try {
+    // Fetch user from database and populate req.user
+    const user = await storage.getUser(req.session.userId);
+    
+    if (!user) {
+      // User session exists but user not found in database
+      req.session.destroy(() => {});
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Populate req.user to match the expected structure from Replit Auth
+    req.user = {
+      id: user.id,
+      email: user.email,
+      claims: {
+        sub: user.id,
+        email: user.email,
+        first_name: user.firstName,
+        last_name: user.lastName,
+      }
+    };
+
     next();
-  } else {
-    res.status(401).json({ error: "Unauthorized" });
+  } catch (error) {
+    console.error('Authentication error:', error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 

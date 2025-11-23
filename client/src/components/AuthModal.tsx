@@ -29,8 +29,9 @@ export function AuthModal({ open, onOpenChange, defaultMode = "signup" }: AuthMo
     setIsLoading(true);
 
     try {
+      // Validation
       if (mode === "signup") {
-        if (!firstName || !lastName) {
+        if (!firstName?.trim() || !lastName?.trim()) {
           toast({
             title: "Missing information",
             description: "Please enter your first and last name",
@@ -39,6 +40,31 @@ export function AuthModal({ open, onOpenChange, defaultMode = "signup" }: AuthMo
           setIsLoading(false);
           return;
         }
+
+        // Password strength validation
+        if (password.length < 8) {
+          toast({
+            title: "Weak password",
+            description: "Password must be at least 8 characters long",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+          toast({
+            title: "Weak password",
+            description: "Password must contain both letters and numbers",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Perform signup/login
+      if (mode === "signup") {
         await signup(email, password, firstName, lastName);
         toast({
           title: "Welcome to Pollinate!",
@@ -53,9 +79,24 @@ export function AuthModal({ open, onOpenChange, defaultMode = "signup" }: AuthMo
       }
       onOpenChange(false);
     } catch (error: any) {
+      // Parse Supabase error codes for better UX
+      let errorMessage = "Please check your details and try again";
+      
+      if (error.message?.includes("already registered") || error.message?.includes("already exists")) {
+        errorMessage = "This email is already registered. Try signing in instead.";
+      } else if (error.message?.includes("invalid") || error.message?.includes("Invalid")) {
+        errorMessage = mode === "signup" 
+          ? "Please use a valid email address"
+          : "Invalid email or password. Please try again.";
+      } else if (error.message?.includes("rate limit")) {
+        errorMessage = "Too many attempts. Please wait a moment and try again.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast({
         title: mode === "signup" ? "Signup failed" : "Login failed",
-        description: error.message || "Please check your details and try again",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -123,9 +164,10 @@ export function AuthModal({ open, onOpenChange, defaultMode = "signup" }: AuthMo
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={6}
+              minLength={8}
               disabled={isLoading}
               data-testid="input-password"
+              placeholder={mode === "signup" ? "At least 8 characters with letters & numbers" : ""}
             />
           </div>
           <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-submit-auth">
