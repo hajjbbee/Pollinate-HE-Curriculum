@@ -1,9 +1,24 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Sparkles, MapPin, BookOpen, Users, Calendar, TrendingUp, AlertCircle } from "lucide-react";
+import { AuthModal } from "@/components/AuthModal";
 
 export default function Landing() {
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signup");
+
+  const openSignup = () => {
+    setAuthMode("signup");
+    setAuthModalOpen(true);
+  };
+
+  const openSignin = () => {
+    setAuthMode("signin");
+    setAuthModalOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
@@ -15,8 +30,8 @@ export default function Landing() {
               <p className="text-xs text-muted-foreground">Home Education Curriculum</p>
             </div>
           </div>
-          <Button asChild variant="default" data-testid="button-login">
-            <a href="/api/login">Sign In</a>
+          <Button onClick={openSignin} variant="default" data-testid="button-login">
+            Sign In
           </Button>
         </div>
       </header>
@@ -39,8 +54,8 @@ export default function Landing() {
             <p className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
               AI-powered 12-week rolling curricula tailored to each child's interests, mastery levels, and local educational opportunities. Supporting homeschool families globally.
             </p>
-            <Button asChild size="lg" className="text-lg px-8" data-testid="button-get-started">
-              <a href="/api/login">Get Started Free</a>
+            <Button onClick={openSignup} size="lg" className="text-lg px-8" data-testid="button-get-started">
+              Get Started Free
             </Button>
           </div>
         </div>
@@ -175,8 +190,8 @@ export default function Landing() {
           <p className="text-lg text-muted-foreground mb-8">
             Join families across three continents using Pollinate to create meaningful, personalized learning experiences.
           </p>
-          <Button asChild size="lg" className="text-lg px-8" data-testid="button-start-now">
-            <a href="/api/login">Start Your Free Trial</a>
+          <Button onClick={openSignup} size="lg" className="text-lg px-8" data-testid="button-start-now">
+            Start Your Free Trial
           </Button>
         </div>
       </section>
@@ -186,6 +201,12 @@ export default function Landing() {
           <p>© 2025 Pollinate. Supporting homeschool families globally.</p>
         </div>
       </footer>
+
+      <AuthModal 
+        open={authModalOpen} 
+        onOpenChange={setAuthModalOpen} 
+        defaultMode={authMode}
+      />
     </div>
   );
 }

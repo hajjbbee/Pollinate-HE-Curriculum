@@ -4,6 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useMobile } from "@/hooks/useMobile";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger } from "@/components/ui/sidebar";
@@ -53,9 +54,9 @@ function PageLoader() {
 
 function AppSidebar() {
   const [location] = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
-  const { data: children, isLoading: childrenLoading } = useQuery({
+  const { data: children, isLoading: childrenLoading } = useQuery<any[]>({
     queryKey: ["/api/children"],
     enabled: !!user,
   });
@@ -69,7 +70,7 @@ function AppSidebar() {
   ];
 
   // Only show Transcripts menu item after children data loads and if high school children exist
-  const menuItems = !childrenLoading && children?.some((child: any) => child.isHighSchoolMode)
+  const menuItems = !childrenLoading && Array.isArray(children) && children.some((child: any) => child.isHighSchoolMode)
     ? [
         ...baseMenuItems.slice(0, 2),
         { title: "Transcripts", url: "/transcripts", icon: GraduationCap },
@@ -138,11 +139,9 @@ function AppSidebar() {
           <div className="mt-auto px-2 py-4 border-t border-sidebar-border">
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="/api/logout" data-testid="nav-logout">
-                    <LogOut className="w-4 h-4" />
-                    <span>Sign Out</span>
-                  </a>
+                <SidebarMenuButton onClick={() => logout()} data-testid="nav-logout">
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -284,9 +283,11 @@ function AppContent() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AppContent />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <AppContent />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

@@ -7,11 +7,13 @@ interface User {
   email: string;
   firstName?: string;
   lastName?: string;
+  profileImageUrl?: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  isAuthenticated: boolean;
   signup: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -24,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
   // Fetch current user
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<{ user: User | null }>({
     queryKey: ['/api/user'],
     retry: false,
   });
@@ -39,11 +41,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       firstName: string; 
       lastName: string; 
     }) => {
-      return await apiRequest('/api/auth/signup', {
-        method: 'POST',
-        body: JSON.stringify({ email, password, firstName, lastName }),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const res = await apiRequest('POST', '/api/auth/signup', { email, password, firstName, lastName });
+      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/user'] });
@@ -53,11 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      return await apiRequest('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const res = await apiRequest('POST', '/api/auth/login', { email, password });
+      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/user'] });
@@ -67,9 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Logout mutation
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('/api/auth/logout', {
-        method: 'POST',
-      });
+      const res = await apiRequest('POST', '/api/auth/logout');
+      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/user'] });
@@ -79,11 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Reset password mutation
   const resetPasswordMutation = useMutation({
     mutationFn: async (email: string) => {
-      return await apiRequest('/api/auth/reset-password', {
-        method: 'POST',
-        body: JSON.stringify({ email }),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const res = await apiRequest('POST', '/api/auth/reset-password', { email });
+      return await res.json();
     },
   });
 
@@ -104,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, signup, login, logout, resetPassword }}>
+    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, signup, login, logout, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );
