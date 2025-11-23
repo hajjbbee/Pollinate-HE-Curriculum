@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Switch, Route, Link, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -212,14 +212,14 @@ function PublicRouter() {
 }
 
 function Router() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const isMobile = useMobile();
 
   // Check if user has completed onboarding (has a family record)
-  // Handle 404 as "no family yet" rather than query error
-  const { data: familyData, isLoading: familyLoading, isError } = useQuery<{ family: any } | null>({
-    queryKey: ["/api/family"],
+  // Use user.id in query key to ensure cache is per-user
+  const { data: familyData, isLoading: familyLoading, error: queryError, isSuccess } = useQuery<{ family: any | null }>({
+    queryKey: ["/api/family", user?.id],  // Per-user cache key
     enabled: isAuthenticated && !!user,
     queryFn: async () => {
       const res = await fetch('/api/family', { credentials: 'include' });
@@ -227,16 +227,35 @@ function Router() {
         // No family exists yet - this is normal for new users
         return { family: null };
       }
+      if (res.status === 401 || res.status === 403) {
+        // Session expired - trigger logout
+        setTimeout(() => {
+          logout();
+          window.location.href = '/';  // Hard redirect to landing
+        }, 0);
+        throw new Error('UNAUTHORIZED');
+      }
       if (!res.ok) {
-        throw new Error('Failed to fetch family');
+        // Server error - throw to let TanStack Query handle retries
+        throw new Error(`Failed to fetch family: HTTP ${res.status}`);
       }
       return res.json();
     },
+    retry: (failureCount, error: any) => {
+      // Don't retry auth errors
+      if (error?.message === 'UNAUTHORIZED') {
+        return false;
+      }
+      // Retry other errors up to 2 times
+      return failureCount < 2;
+    },
+    staleTime: 30000,
   });
 
-  // Only proceed with redirects once the family query has settled
-  const familyQuerySettled = !familyLoading && !isError;
-  const hasFamily = familyData?.family;
+  // Only proceed with routing when we have definitive family status
+  const isAuthError = queryError && (queryError as any)?.message === 'UNAUTHORIZED';
+  const hasNetworkError = queryError && !isAuthError;
+  const hasFamily = isSuccess && familyData?.family;
 
   // Public routes that authenticated users can visit
   const publicRoutes = ["/", "/privacy", "/pricing"];
@@ -244,7 +263,8 @@ function Router() {
 
   // Redirect authenticated users from public routes OR from onboarding if they have a family
   useEffect(() => {
-    if (!isAuthenticated || !familyQuerySettled) {
+    // Only redirect when we have definitive family status (query succeeded)
+    if (!isAuthenticated || !isSuccess || isAuthError) {
       return;
     }
 
@@ -257,16 +277,16 @@ function Router() {
     // Redirect from public routes to appropriate page
     if (isOnPublicRoute) {
       if (!hasFamily) {
-        // New user without family -> onboarding
+        // Definitively no family (404) -> onboarding
         setLocation("/onboarding");
       } else {
-        // Returning user with family -> dashboard
+        // Has family -> dashboard
         setLocation("/dashboard");
       }
     }
-  }, [isAuthenticated, familyQuerySettled, hasFamily, location, isOnPublicRoute, setLocation]);
+  }, [isAuthenticated, isSuccess, isAuthError, hasFamily, location, isOnPublicRoute, setLocation]);
 
-  if (isLoading || (isAuthenticated && familyLoading)) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -278,7 +298,46 @@ function Router() {
     return <PublicRouter />;
   }
 
+  // Show loading while fetching family status
+  if (familyLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Show error screen for network errors (not auth errors)
+  if (hasNetworkError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-6">
+        <div className="max-w-md text-center space-y-4">
+          <h2 className="text-2xl font-bold">Connection Error</h2>
+          <p className="text-muted-foreground">
+            We're having trouble loading your account. Please check your internet connection and try again.
+          </p>
+          <button
+            onClick={() => queryClient.refetchQueries({ queryKey: ["/api/family", user?.id] })}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            data-testid="button-retry"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Block onboarding access for users with families (prevents flash before redirect)
   if (location === "/onboarding") {
+    if (hasFamily) {
+      // User has family but manually navigated to onboarding - show loading while redirect happens
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      );
+    }
     return <Onboarding />;
   }
 
