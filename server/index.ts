@@ -16,41 +16,6 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: false }));
 
-// ============================================================
-// PERMANENT REDIRECT TO PRODUCTION DOMAIN
-// All code remains intact, but server redirects all requests
-// to the production site at pollinatecurriculum.com
-// ============================================================
-app.use((req, res, next) => {
-  const redirectUrl = 'https://pollinatecurriculum.com';
-  
-  // Send 301 Permanent Redirect
-  res.status(301);
-  res.setHeader('Location', redirectUrl);
-  
-  // Send nice HTML page for browsers
-  res.send(`<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>Pollinate Curriculum</title>
-    <meta http-equiv="refresh" content="0; url=${redirectUrl}" />
-    <link rel="canonical" href="${redirectUrl}" />
-    <style>
-      body {font-family: system-ui, sans-serif; text-align: center; margin-top: 15vh; background: #f1faee; color: #2d6a4f;}
-      h1 {font-size: 2.8rem; margin-bottom: 1rem;}
-      p {font-size: 1.3rem;}
-      a {color: #40916c; font-weight: 600; text-decoration: underline;}
-    </style>
-  </head>
-  <body>
-    <h1>✨ Pollinate Curriculum</h1>
-    <p>Taking you to the new home...</p>
-    <p><a href="${redirectUrl}">Click here if you're not redirected →</a></p>
-  </body>
-</html>`);
-});
-
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
