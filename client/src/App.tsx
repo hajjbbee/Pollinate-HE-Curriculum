@@ -261,15 +261,33 @@ function Router() {
   const publicRoutes = ["/", "/privacy", "/pricing"];
   const isOnPublicRoute = publicRoutes.includes(location);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 Router state:', {
+      isAuthenticated,
+      user: user?.id,
+      familyLoading,
+      isSuccess,
+      isAuthError,
+      hasNetworkError,
+      hasFamily,
+      location,
+      isOnPublicRoute,
+      queryError: queryError?.message,
+    });
+  }, [isAuthenticated, user?.id, familyLoading, isSuccess, isAuthError, hasNetworkError, hasFamily, location, isOnPublicRoute, queryError]);
+
   // Redirect authenticated users from public routes OR from onboarding if they have a family
   useEffect(() => {
     // Only redirect when we have definitive family status (query succeeded)
     if (!isAuthenticated || !isSuccess || isAuthError) {
+      console.log('❌ Redirect blocked:', { isAuthenticated, isSuccess, isAuthError });
       return;
     }
 
     // Prevent users with families from accessing onboarding
     if (hasFamily && location === "/onboarding") {
+      console.log('✅ Redirecting from onboarding to dashboard');
       setLocation("/dashboard");
       return;
     }
@@ -278,9 +296,11 @@ function Router() {
     if (isOnPublicRoute) {
       if (!hasFamily) {
         // Definitively no family (404) -> onboarding
+        console.log('✅ Redirecting to onboarding (no family)');
         setLocation("/onboarding");
       } else {
         // Has family -> dashboard
+        console.log('✅ Redirecting to dashboard (has family)');
         setLocation("/dashboard");
       }
     }
@@ -339,6 +359,17 @@ function Router() {
       );
     }
     return <Onboarding />;
+  }
+
+  // If user is on a public route and we're waiting for redirect, show loading
+  // This prevents flash of wrong content before redirect fires
+  if (isOnPublicRoute) {
+    console.log('⏳ On public route, waiting for redirect...');
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   // Mobile-first routes (Today, This Week, Resources, Progress)
