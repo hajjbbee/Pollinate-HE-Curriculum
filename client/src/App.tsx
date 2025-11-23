@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Switch, Route, Link, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -102,7 +102,7 @@ function AppSidebar() {
             {user && (
               <div className="flex items-center gap-3">
                 <Avatar className="w-10 h-10">
-                  <AvatarImage src={user.profileImageUrl} />
+                  <AvatarImage src={user.profileImageUrl || undefined} />
                   <AvatarFallback className="text-sm">
                     {getInitials(`${user.firstName || ""} ${user.lastName || ""}`)}
                   </AvatarFallback>
@@ -212,11 +212,46 @@ function PublicRouter() {
 }
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const [location] = useLocation();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const [location, setLocation] = useLocation();
   const isMobile = useMobile();
 
-  if (isLoading) {
+  // Check if user has completed onboarding (has a family record)
+  // Tolerate 404 errors (no family exists yet)
+  const { data: familyData, isLoading: familyLoading } = useQuery<{ family: any } | null>({
+    queryKey: ["/api/family"],
+    enabled: isAuthenticated && !!user,
+    retry: (failureCount, error: any) => {
+      // Don't retry on 404 - family just doesn't exist yet
+      if (error?.status === 404 || error?.response?.status === 404) {
+        return false;
+      }
+      return failureCount < 2;
+    },
+  });
+
+  // Public routes that authenticated users can visit
+  const publicRoutes = ["/", "/privacy", "/pricing"];
+  const isOnPublicRoute = publicRoutes.includes(location);
+
+  // Redirect authenticated users from public routes to the appropriate page
+  useEffect(() => {
+    if (!isAuthenticated || familyLoading || !isOnPublicRoute) {
+      return;
+    }
+
+    const hasFamily = familyData?.family;
+
+    if (!hasFamily) {
+      // New user without family -> onboarding
+      setLocation("/onboarding");
+    } else {
+      // Returning user with family -> dashboard
+      setLocation("/dashboard");
+    }
+  }, [isAuthenticated, familyLoading, familyData, location, isOnPublicRoute, setLocation]);
+
+  if (isLoading || (isAuthenticated && familyLoading)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
