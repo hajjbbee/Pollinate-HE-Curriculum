@@ -66,6 +66,29 @@ export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   const sessionMiddleware = getSession();
   app.use(sessionMiddleware);
+  
+  // Check if Replit Auth environment variables are available
+  if (!process.env.REPL_ID) {
+    console.log('⚠️  Replit Auth disabled - REPL_ID not found (running outside Replit)');
+    console.log('    Authentication features will be unavailable.');
+    
+    // Setup minimal auth routes that redirect to home
+    app.get("/api/login", (req, res) => {
+      res.redirect('/');
+    });
+    app.get("/api/callback", (req, res) => {
+      res.redirect('/');
+    });
+    app.get("/api/logout", (req, res) => {
+      res.redirect('/');
+    });
+    app.get("/api/user", (req, res) => {
+      res.json({ user: null });
+    });
+    
+    return sessionMiddleware;
+  }
+
   app.use(passport.initialize());
   app.use(passport.session());
 
