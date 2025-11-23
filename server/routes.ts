@@ -3,7 +3,7 @@ import { storage } from "./storage";
 import { insertFamilySchema, insertChildSchema, insertJournalEntrySchema, insertTranscriptCourseSchema, insertCreditMappingSchema, type CurriculumData, type WeekCurriculum, curriculumDataSchema } from "@shared/schema";
 import { z } from "zod";
 import OpenAI from "openai";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./supabaseAuth";
 import { createServer } from "http";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { CollaborationService } from "./websocket";
