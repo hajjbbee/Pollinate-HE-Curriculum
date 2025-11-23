@@ -362,7 +362,7 @@ export default function Settings() {
               <div className="w-5 h-5 rounded bg-[#1877F2] flex items-center justify-center">
                 <SiFacebook className="w-3 h-3 text-white" />
               </div>
-              <CardTitle className="font-heading">My Homeschool Groups</CardTitle>
+              <CardTitle className="font-heading">My Home Education Groups</CardTitle>
             </div>
             <CardDescription>
               Manage Facebook groups where you find educational events. Add events manually from your groups to see them alongside your curriculum.

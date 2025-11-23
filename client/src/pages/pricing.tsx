@@ -90,7 +90,7 @@ export default function Pricing() {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4">Choose Your Beta Plan</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Lock in lifetime beta pricing before rates increase. AI-powered personalized homeschool curriculum for your family.
+            Lock in lifetime beta pricing before rates increase. AI-powered personalized home education curriculum for your family.
           </p>
         </div>
 
@@ -291,7 +291,7 @@ export default function Pricing() {
               <Badge variant="secondary" className="mb-2" data-testid="badge-spots-coop">
                 {BETA_SPOTS.coop.limit - BETA_SPOTS.coop.taken} of {BETA_SPOTS.coop.limit} spots left
               </Badge>
-              <CardDescription className="text-xs">For homeschool groups</CardDescription>
+              <CardDescription className="text-xs">For home education groups</CardDescription>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-sm">

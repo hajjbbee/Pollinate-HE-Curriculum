@@ -244,7 +244,7 @@ export const subscriptions = pgTable("subscriptions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Homeschool groups table
+// Home education groups table
 export const homeschoolGroups = pgTable("homeschool_groups", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   familyId: varchar("family_id").notNull().references(() => families.id, { onDelete: "cascade" }),

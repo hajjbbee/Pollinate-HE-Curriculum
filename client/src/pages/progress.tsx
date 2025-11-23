@@ -206,7 +206,7 @@ export default function ProgressPage() {
 
     // Title
     doc.setFontSize(20);
-    doc.text("Homeschool Portfolio", 105, yPos, { align: "center" });
+    doc.text("Home Education Portfolio", 105, yPos, { align: "center" });
     yPos += 15;
 
     doc.setFontSize(12);

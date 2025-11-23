@@ -205,7 +205,7 @@ export default function FamilySettings() {
       setNewGroupName("");
       toast({
         title: "Facebook group connected!",
-        description: "Events from this group will appear in your Homeschool Happenings.",
+        description: "Events from this group will appear in your Home Education Happenings.",
       });
     },
     onError: (error: any) => {
@@ -1176,8 +1176,8 @@ export default function FamilySettings() {
                 <CardTitle>Connected Facebook Groups (Optional)</CardTitle>
               </div>
               <CardDescription>
-                Connect 1-5 private homeschool Facebook groups to automatically discover local events.
-                We'll match events to your curriculum themes and show them in "Homeschool Happenings Near You".
+                Connect 1-5 private home education Facebook groups to automatically discover local events.
+                We'll match events to your curriculum themes and show them in "Home Education Happenings Near You".
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

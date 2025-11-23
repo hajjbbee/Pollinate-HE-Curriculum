@@ -49,10 +49,10 @@ export default function Landing() {
           
           <div className="text-center">
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-bold text-foreground tracking-tight mb-6">
-              Living, Interest-Led Homeschool<br />Curriculum for Your Family
+              Living, Interest-Led Home Education<br />Curriculum for Your Family
             </h2>
             <p className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
-              AI-powered 12-week rolling curricula tailored to each child's interests, mastery levels, and local educational opportunities. Supporting homeschool families globally.
+              AI-powered 12-week rolling curricula tailored to each child's interests, mastery levels, and local educational opportunities. Supporting home education families globally.
             </p>
             <Button onClick={openSignup} size="lg" className="text-lg px-8" data-testid="button-get-started">
               Get Started Free
@@ -185,7 +185,7 @@ export default function Landing() {
       <section className="py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl sm:text-4xl font-heading font-bold text-foreground mb-6">
-            Ready to Transform Your Homeschool?
+            Ready to Transform Your Home Education?
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
             Join families across three continents using Pollinate to create meaningful, personalized learning experiences.
@@ -198,7 +198,7 @@ export default function Landing() {
 
       <footer className="border-t border-border py-12 bg-card/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-muted-foreground">
-          <p>© 2025 Pollinate. Supporting homeschool families globally.</p>
+          <p>© 2025 Pollinate. Supporting home education families globally.</p>
         </div>
       </footer>
 

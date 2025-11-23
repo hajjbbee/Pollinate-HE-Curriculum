@@ -758,13 +758,13 @@ export default function Dashboard() {
                           </Card>
                         )}
 
-                        {/* Homeschool Happenings Near You */}
+                        {/* Home Education Happenings Near You */}
                         {upcomingEvents && upcomingEvents.length > 0 && (
                           <Card>
                             <CardHeader>
                               <div className="flex items-center gap-2">
                                 <CalendarDays className="w-5 h-5 text-primary" />
-                                <CardTitle className="font-heading">Homeschool Happenings Near You</CardTitle>
+                                <CardTitle className="font-heading">Home Education Happenings Near You</CardTitle>
                               </div>
                               <CardDescription>
                                 {upcomingEvents.length} events discovered in your area (next 14 days)

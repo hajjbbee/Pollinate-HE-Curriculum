@@ -339,7 +339,7 @@ async function generateCurriculum(
     category: opp.category || "Educational",
   }));
 
-  const systemPrompt = `You are the world's most sophisticated hybrid homeschool curriculum engine, seamlessly blending ALL of these approaches in every single suggestion:
+  const systemPrompt = `You are the world's most sophisticated hybrid home education curriculum engine, seamlessly blending ALL of these approaches in every single suggestion:
 
 • Child-led & Unschooling (follow the child's spark, strewing, rabbit holes)
 • Charlotte Mason (living books, narration, nature study, short lessons, habit training)
@@ -2207,7 +2207,7 @@ Respond with ONLY the child's number (1, 2, 3, etc.). If you can't determine, re
     const targetChild = children.find(c => c.id === targetChildId);
 
     // Extract interest signals using Claude
-    const systemPrompt = `You are an educational AI assistant that analyzes voice journal entries from homeschool families to extract interest signals and learning patterns.
+    const systemPrompt = `You are an educational AI assistant that analyzes voice journal entries from home education families to extract interest signals and learning patterns.
 
 Current family context:
 - This entry is about: ${targetChild?.name} (age ${targetChild?.age})
@@ -2773,7 +2773,7 @@ router.get("/api/events/week/:weekNumber", isAuthenticated, async (req: Request,
   }
 });
 
-// Homeschool Groups routes
+// Home Education Groups routes
 router.get("/api/groups", isAuthenticated, async (req: Request, res: Response) => {
   try {
     if (!req.user?.id) {

@@ -30,7 +30,7 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
     onSuccess: () => {
       toast({
         title: "Message sent!",
-        description: "Got it! I'm a homeschool mum too — I'll reply within a few hours.",
+        description: "Got it! I'm a home education mum too — I'll reply within a few hours.",
       });
       setMessage("");
       setScreenshotUrl(null);
@@ -162,7 +162,7 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
                   <div className="space-y-3 text-muted-foreground">
                     <p>
                       Great question! The AI pulls events from Eventbrite and local Facebook 
-                      homeschool groups. If you're not seeing something you expected:
+                      home education groups. If you're not seeing something you expected:
                     </p>
                     <ul className="list-disc pl-5 space-y-1">
                       <li>Check your travel radius in Settings (default is 30 minutes)</li>
@@ -230,7 +230,7 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
                       <li>Record quick voice notes about what happened</li>
                     </ul>
                     <p className="mt-2">
-                      Think of it as your daily homeschool companion — start here each morning 
+                      Think of it as your daily home education companion — start here each morning 
                       to see what's ahead, and come back throughout the day to capture the magic as it happens!
                     </p>
                     <div className="mt-4 p-4 bg-muted rounded-md">
@@ -316,7 +316,7 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
               <div className="p-4 bg-primary/5 border border-primary/20 rounded-md">
                 <p className="text-sm text-muted-foreground">
                   I'm here to help! Send me a message and I'll get back to you within a few hours. 
-                  I'm a homeschool mum too, so I get it.
+                  I'm a home education mum too, so I get it.
                 </p>
               </div>
 
