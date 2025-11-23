@@ -77,6 +77,9 @@ export function AuthModal({ open, onOpenChange, defaultMode = "signup" }: AuthMo
           description: "You've been signed in successfully.",
         });
       }
+      
+      // Wait a moment for the auth state to update before closing modal
+      await new Promise(resolve => setTimeout(resolve, 500));
       onOpenChange(false);
     } catch (error: any) {
       // Parse Supabase error codes for better UX

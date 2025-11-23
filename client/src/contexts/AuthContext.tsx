@@ -53,8 +53,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest('POST', '/api/auth/signup', { email, password, firstName, lastName });
       return await res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+    onSuccess: async () => {
+      // Wait for the user query to refetch after signup
+      await queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/user'] });
     },
   });
 
@@ -64,8 +66,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest('POST', '/api/auth/login', { email, password });
       return await res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+    onSuccess: async () => {
+      // Wait for the user query to refetch after login
+      await queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/user'] });
     },
   });
 
